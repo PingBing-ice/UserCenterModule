@@ -1,0 +1,22 @@
+server:
+  port: 8088
+spring:
+  application:
+    name: service-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: user-center
+          uri: lb://user-center
+          predicates:
+            - Path=/api/** # 路径匹配
+        - id: user-partner
+          uri: lb://user-partner
+          predicates:
+            - Path=/partner/** # 路径匹配
+    nacos:
+      discovery:
+        server-addr: localhost:8848
