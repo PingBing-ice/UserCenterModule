@@ -1,9 +1,8 @@
 package com.user.partner.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.user.partner.mapper.UserTeamMapper;
 import com.user.model.domain.UserTeam;
-
+import com.user.partner.mapper.UserTeamMapper;
 import com.user.partner.service.UserTeamService;
 import org.springframework.stereotype.Service;
 

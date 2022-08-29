@@ -10,6 +10,8 @@ public class MqClient {
     public static final String NETTY_EXCHANGE = "exchange_netty";
     public static final String NETTY_KEY = "netty";
     public static final String NETTY_QUEUE = "netty_queue";
+    public static final String REDIS_QUEUE = "redis_queue";
+    public static final String REDIS_KEY = "redis_key";
 
     // 死信
     public static final String DIE_EXCHANGE ="exchange_die";

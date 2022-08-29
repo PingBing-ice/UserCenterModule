@@ -1,4 +1,4 @@
-package com.user.util.constant;
+package com.user.model.constant;
 
 /**
  * 用户常量

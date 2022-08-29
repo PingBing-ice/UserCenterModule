@@ -10,7 +10,7 @@ import com.user.partner.service.IUserFriendReqService;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
 import com.user.util.openfeign.UserOpenFeign;
-import com.user.util.utils.SafetyUserUtils;
+import com.user.util.utils.UserUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -66,7 +66,7 @@ public class UserFriendReqServiceImpl extends ServiceImpl<UserFriendReqMapper, U
         if (users.isEmpty()) {
             throw new RuntimeException("查找申请的用户为空");
         }
-        return users.stream().peek(SafetyUserUtils::getSafetyUser).collect(Collectors.toList());
+        return users.stream().peek(UserUtils::getSafetyUser).collect(Collectors.toList());
 
     }
 

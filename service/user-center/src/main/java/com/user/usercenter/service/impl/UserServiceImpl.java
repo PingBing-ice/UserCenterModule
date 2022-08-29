@@ -9,7 +9,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
 
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.user.util.common.ErrorCode;
@@ -17,7 +16,7 @@ import com.user.model.domain.User;
 import com.user.util.exception.GlobalException;
 import com.user.usercenter.mapper.UserMapper;
 import com.user.usercenter.service.IUserService;
-import com.user.usercenter.utils.MD5;
+import com.user.util.utils.MD5;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 
@@ -29,8 +28,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.user.util.constant.UserConstant.ADMIN_ROLE;
-import static com.user.util.constant.UserConstant.USER_LOGIN_STATE;
+import static com.user.model.constant.UserConstant.ADMIN_ROLE;
+import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * <p>
@@ -279,10 +278,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
 
-        if (!StringUtils.isEmpty(username) || !StringUtils.isEmpty(tel) || !StringUtils.isEmpty(email)) {
+        if (StringUtils.isEmpty(username) && StringUtils.isEmpty(tel) && StringUtils.isEmpty(email)) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
-        if (StringUtils.isEmpty(gender) && !gender.equals("男") && !gender.equals("女")) {
+        if (org.springframework.util.StringUtils.hasText(gender) && !gender.equals("男") && !gender.equals("女")) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
         if (!isAdmin(loginUser) && !userId.equals(loginUser.getId())) {

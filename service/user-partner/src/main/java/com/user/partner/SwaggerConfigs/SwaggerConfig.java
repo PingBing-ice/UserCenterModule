@@ -1,4 +1,4 @@
-package com.user.util.config;
+package com.user.partner.SwaggerConfigs;
 
 import com.github.xiaoymin.knife4j.spring.annotations.EnableKnife4j;
 import org.springframework.context.annotation.Bean;
@@ -11,7 +11,6 @@ import springfox.documentation.builders.RequestHandlerSelectors;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
-import springfox.documentation.swagger2.annotations.EnableSwagger2WebMvc;
 
 /**
  * @author ice
@@ -23,8 +22,8 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2WebMvc;
 @Import(BeanValidatorPluginsConfiguration.class)
 public class SwaggerConfig {
 
-    @Bean(value = "defaultApi2")
-    public Docket defaultApi2() {
+    @Bean(value = "defaultApiPartner")
+    public Docket defaultApiPartner() {
         return new Docket(DocumentationType.SWAGGER_2)
                 .apiInfo(new ApiInfoBuilder()
                         //.title("swagger-bootstrap-ui-demo RESTful APIs")
@@ -32,10 +31,10 @@ public class SwaggerConfig {
                         .version("1.0")
                         .build())
                 //分组名称
-                .groupName("2.X版本")
+                .groupName("partner")
                 .select()
                 //这里指定Controller扫描包路径
-                .apis(RequestHandlerSelectors.basePackage("com.user.usercenter.controller,com.user.partner.controller"))
+                .apis(RequestHandlerSelectors.basePackage("com.user.partner.controller"))
                 .paths(PathSelectors.any())
                 .build();
     }

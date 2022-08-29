@@ -5,7 +5,7 @@ package com.user.util.common;
  */
 
 public enum ErrorCode {
-
+    ERROR(201, "失败",""),
     PARAMS_ERROR(40000,"请求参数错误",""),
     NULL_ERROR(40001,"请求数据为空",""),
     NO_LOGIN(40100,"未登录",""),

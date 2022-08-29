@@ -33,6 +33,7 @@ public class TestSql {
     public void TestPassword() {
         String passwordMD = DigestUtils.md5DigestAsHex(("SALT" + "password").getBytes());
         System.out.println(passwordMD);
+
     }
 
 

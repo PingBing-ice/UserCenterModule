@@ -14,13 +14,13 @@ import org.springframework.web.util.pattern.PathPatternParser;
 @Configuration
 public class GatewayConfig {
     @Bean
-    public CorsWebFilter corsFilter() {
+    public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.addAllowedMethod("*");
 
-        config.addAllowedOrigin("*");
+        config.addAllowedOriginPattern("*");
         config.addAllowedHeader("*");
-
+        config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource(new PathPatternParser());
         source.registerCorsConfiguration("/**", config);
 

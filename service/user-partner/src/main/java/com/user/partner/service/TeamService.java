@@ -3,6 +3,14 @@ package com.user.partner.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.user.model.domain.Team;
+import com.user.model.domain.User;
+import com.user.model.domain.vo.TeamUserVo;
+import com.user.model.dto.TeamQuery;
+import com.user.model.request.TeamJoinRequest;
+import com.user.model.request.TeamUpdateRequest;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
 * @author BING
@@ -11,4 +19,51 @@ import com.user.model.domain.Team;
 */
 public interface TeamService extends IService<Team> {
 
+    /**
+     * 保存用户
+     * @param team
+     * @param loginUser
+     * @return
+     */
+    long addTeam(Team team, User loginUser);
+
+    /**
+     * 根据id删除队伍
+     * @param id
+     * @param request
+     * @return
+     */
+    boolean deleteById(long id,HttpServletRequest request);
+
+    /**
+     * 查询队伍列表
+     * @param teamQuery
+     * @param isAdmin
+     * @return
+     */
+    List<TeamUserVo> getTeamList(TeamQuery teamQuery, boolean isAdmin);
+
+
+    /**
+     * 添加队伍
+     * @param teamJoinRequest
+     * @param request
+     * @return
+     */
+    boolean addUserTeam(TeamJoinRequest teamJoinRequest, HttpServletRequest request);
+
+    /**
+     *  修改队伍
+     * @param teamUpdateRequest
+     * @param request
+     */
+    void updateTeam(TeamUpdateRequest teamUpdateRequest, HttpServletRequest request);
+
+    /**
+     * 退出队伍
+     * @param teamId 队伍的id
+     * @param request  登录用户
+     * @return
+     */
+    boolean quitTeam(String teamId, HttpServletRequest request);
 }

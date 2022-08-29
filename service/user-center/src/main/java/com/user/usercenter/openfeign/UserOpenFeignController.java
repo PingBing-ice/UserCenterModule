@@ -3,10 +3,7 @@ package com.user.usercenter.openfeign;
 import com.user.model.domain.User;
 import com.user.usercenter.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -23,5 +20,11 @@ public class UserOpenFeignController {
     @PostMapping("/lists")
     public List<User> getListByIds(@RequestBody List<String> ids) {
         return userService.listByIds(ids);
+    }
+
+
+    @GetMapping("/getUserById")
+    public User getUserById(@RequestParam("id") String id) {
+        return userService.getById(id);
     }
 }

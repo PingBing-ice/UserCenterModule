@@ -8,15 +8,13 @@ import com.user.partner.service.IUserFriendReqService;
 import com.user.partner.service.IUserFriendService;
 import com.user.util.common.B;
 import com.user.util.common.ErrorCode;
-import com.user.util.constant.UserConstant;
+import com.user.model.constant.UserConstant;
 import com.user.util.exception.GlobalException;
-import com.user.util.openfeign.UserOpenFeign;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 

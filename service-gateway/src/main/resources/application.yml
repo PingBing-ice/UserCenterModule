@@ -5,6 +5,20 @@ spring:
     name: service-gateway
   cloud:
     gateway:
+#      globalcors:
+#        cors-configurations:
+#          '[/**]':
+#            allowedOrigins:
+#              - "http://localhost:8001"
+#            allowedMethods:
+#              - "GET"
+#              - "POST"
+#              - "DELETE"
+#              - "PUT"
+#              - "OPTIONS"
+#            allowedHeaders: "*"
+#            allowCredentials: true
+#            maxAge: 360000
       discovery:
         locator:
           enabled: true
@@ -12,11 +26,11 @@ spring:
         - id: user-center
           uri: lb://user-center
           predicates:
-            - Path=/api/** # 路径匹配
+            - Path=/api/**
         - id: user-partner
           uri: lb://user-partner
           predicates:
-            - Path=/partner/** # 路径匹配
+            - Path=/partner/**
     nacos:
       discovery:
         server-addr: localhost:8848

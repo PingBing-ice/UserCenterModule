@@ -19,7 +19,7 @@ public class Team implements Serializable {
     /**
      * id
      */
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -50,10 +50,10 @@ public class Team implements Serializable {
     /**
      * 状态
      */
-    private String status;
+    private Integer status;
 
     /**
-     * 创建队伍的时间
+     * 过期时间
      */
     private Date expireTime;
 

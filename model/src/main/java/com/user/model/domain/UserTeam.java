@@ -13,10 +13,13 @@ import java.util.Date;
 @TableName(value ="user_team")
 @Data
 public class UserTeam implements Serializable {
+
+    @TableField(exist = false)
+    private static final long serialVersionUID = -4639540624582420418L;
     /**
      * id
      */
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -55,6 +58,5 @@ public class UserTeam implements Serializable {
      */
     private Date updateTime;
 
-    @TableField(exist = false)
-    private static final long serialVersionUID = 1L;
+
 }

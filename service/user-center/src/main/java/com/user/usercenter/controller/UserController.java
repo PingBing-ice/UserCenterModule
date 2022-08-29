@@ -4,15 +4,16 @@ package com.user.usercenter.controller;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-
-import com.user.util.common.B;
-import com.user.util.common.ErrorCode;
 import com.user.model.domain.User;
 import com.user.model.request.UserLoginRequest;
 import com.user.model.request.UserRegisterRequest;
-import com.user.util.exception.GlobalException;
+import com.user.rabbitmq.config.mq.RabbitService;
 import com.user.usercenter.service.IUserService;
+import com.user.util.common.B;
+import com.user.util.common.ErrorCode;
+import com.user.util.exception.GlobalException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.user.util.constant.UserConstant.USER_LOGIN_STATE;
+import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * <p>
@@ -43,6 +44,8 @@ public class UserController {
     @Resource
     private IUserService userService;
 
+    @Autowired
+    private RabbitService rabbitService;
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -50,6 +53,7 @@ public class UserController {
     public B<String> test() {
         return B.ok("请求成功");
     }
+
 
     // 用户注册
     @PostMapping("/Register")
@@ -124,7 +128,7 @@ public class UserController {
         list = list.stream().peek(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
         return B.ok(list);
     }
-
+    // 管理员删除用户
     @PostMapping("/delete")
     public B<Boolean> deleteUser(@RequestBody Long id, HttpServletRequest request) {
         if (id <= 0) {

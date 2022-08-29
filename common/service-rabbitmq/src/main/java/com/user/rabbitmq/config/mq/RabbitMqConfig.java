@@ -1,5 +1,6 @@
 package com.user.rabbitmq.config.mq;
 
+
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -56,5 +57,14 @@ public class RabbitMqConfig {
     public Binding dieBinding(@Qualifier("dieExchange") DirectExchange dieExchange,
                               @Qualifier("dieQueue") Queue dieQueue) {
         return BindingBuilder.bind(dieQueue).to(dieExchange).with(MqClient.DIE_KEY);
+    }
+    @Bean("redisQueue")
+    public Queue redisQueue() {
+        return QueueBuilder.durable(MqClient.REDIS_QUEUE).build();
+    }
+    @Bean
+    public Binding redisBinding(@Qualifier("nettyExchange") DirectExchange dieExchange,
+                                @Qualifier("redisQueue") Queue redisQueue) {
+        return BindingBuilder.bind(redisQueue).to(dieExchange).with(MqClient.REDIS_KEY);
     }
 }
