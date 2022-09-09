@@ -38,6 +38,7 @@ import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 @RestController
 @RequestMapping("/user")
 //@CrossOrigin(origins = {"http://localhost:7777","http://127.0.0.1:7777"}, allowCredentials = "true")
+@SuppressWarnings("all")
 @Slf4j
 public class UserController {
 
@@ -222,7 +223,8 @@ public class UserController {
     // ========================================================================================
     // 搜索用户
     @GetMapping("/searchUserName")
-    public B<List<User>> searchUserName(@RequestParam(required = false) String friendUserName, HttpServletRequest request) {
+    public B<List<User>> searchUserName(@RequestParam(required = false) String friendUserName,
+                                        HttpServletRequest request) {
         User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
         if (user == null) {
             throw new GlobalException(ErrorCode.NO_LOGIN);

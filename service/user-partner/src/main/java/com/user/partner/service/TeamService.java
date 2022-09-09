@@ -25,7 +25,7 @@ public interface TeamService extends IService<Team> {
      * @param loginUser
      * @return
      */
-    long addTeam(Team team, User loginUser);
+    String addTeam(Team team, User loginUser);
 
     /**
      * 根据id删除队伍

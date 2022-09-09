@@ -1,4 +1,7 @@
 import java.io.Serializable;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
+import java.util.Hashtable;
 
 /**
  * @author ice
@@ -14,12 +17,13 @@ public class test implements Serializable {
 
 
     public static void main(String[] args) {
-
-        System.out.println(3/2);
-        String mmmm = new String("mmmm");
-        StringBuffer stringBuffer = new StringBuffer("mmmmmms");
-        stringBuffer.reverse();
-        System.out.println(stringBuffer);
+        Usb usb = new UsbTaoFactory();
+        InvocationHandler header = new MyShellHeader(usb);
+        Usb proxy = (Usb) Proxy.newProxyInstance(usb.getClass().getClassLoader(), usb.getClass().getInterfaces(), header);
+        float shell = proxy.shell(1);
+        System.out.println("通过动态代理.代理对象"+shell);
+        Hashtable<String, String> map = new Hashtable<>();
+        map.put("s", "a");
     }
 
     private static void print(int i) {

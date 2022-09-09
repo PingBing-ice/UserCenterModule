@@ -50,13 +50,13 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     @Resource
     private UserTeamService userTeamService;
 
-    @Autowired
+    @Resource
     private UserOpenFeign userOpenFeign;
 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public long addTeam(Team team, User loginUser) {
+    public String addTeam(Team team, User loginUser) {
         RLock lock = redissonClient.getLock("user:addTeam:key");
         try {
             if (lock.tryLock(0, 3000, TimeUnit.MILLISECONDS)) {
@@ -99,17 +99,16 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 }
                 //        插入队伍信息到队伍表
                 team.setId(null);
-                team.setUserId(Long.parseLong(userId));
+                team.setUserId(userId);
                 boolean save = this.save(team);
-
-                Long teamId = team.getId();
-                if (!save || teamId == null) {
+                String teamId = team.getId();
+                if (!save || !StringUtils.hasText(teamId)) {
                     throw new GlobalException(ErrorCode.PARAMS_ERROR, "插入失败");
                 }
                 //插入用户 => 队伍关系到关系表
                 UserTeam userTeam = new UserTeam();
                 userTeam.setName(team.getName());
-                userTeam.setUserId(Long.parseLong(userId));
+                userTeam.setUserId(userId);
                 userTeam.setTeamId(teamId);
                 userTeam.setJoinTime(new Date());
                 boolean result = userTeamService.save(userTeam);
@@ -118,7 +117,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 }
                 return teamId;
             }
-            return -1;
+            return "";
         } catch (InterruptedException e) {
             throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "加锁失败");
         } finally {
@@ -137,7 +136,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
      * @return boolean
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteById(long id, HttpServletRequest request) {
         User loginUser = UserUtils.getLoginUser(request);
         String userId = loginUser.getId();
@@ -145,18 +144,22 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new GlobalException(ErrorCode.NULL_ERROR, "未登录");
         }
         Team team = this.getById(id);
-        if (team == null || team.getId() < 0) {
+        if (team == null || !StringUtils.hasText(team.getId())) {
             throw new GlobalException(ErrorCode.NULL_ERROR, "没有该队伍");
         }
-        Long teamUserId = team.getUserId();
-        if (!userId.equals(teamUserId.toString()) || !UserUtils.isAdmin(request)) {
-            throw new GlobalException(ErrorCode.NO_AUTH);
+        String teamId = team.getId();
+        String teamUserId = team.getUserId();
+        if (!userId.equals(teamUserId) || !UserUtils.isAdmin(request)) {
+            throw new GlobalException(ErrorCode.NO_AUTH, "没有权限");
         }
         QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
-        userTeamQueryWrapper.eq("team_id", team.getId());
-        userTeamService.remove(userTeamQueryWrapper);
+        userTeamQueryWrapper.eq("team_id", teamId);
+        boolean remove = userTeamService.remove(userTeamQueryWrapper);
+        if (!remove) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "删除队伍关联失败");
+        }
         QueryWrapper<Team> teamQueryWrapper = new QueryWrapper<>();
-        teamQueryWrapper.eq("user_id", userId).and(wrapper -> wrapper.eq("id", id));
+        teamQueryWrapper.eq("user_id", userId).and(wrapper -> wrapper.eq("id", teamId));
         return this.remove(teamQueryWrapper);
     }
 
@@ -208,7 +211,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
         List<TeamUserVo> teamUserVos = new ArrayList<>();
         for (Team team : list) {
-            Long teamId = team.getId();
+
+            String teamId = team.getId();
             QueryWrapper<UserTeam> teamQueryWrapper = new QueryWrapper<>();
             teamQueryWrapper.eq("team_id", teamId);
             List<UserTeam> userTeams = userTeamService.list(teamQueryWrapper);
@@ -218,8 +222,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
             if (!CollectionUtils.isEmpty(userTeams)) {
                 for (UserTeam userTeam : userTeams) {
-                    Long userId = userTeam.getUserId();
-                    User userById = userOpenFeign.getUserById(userId.toString());
+                    String userId = userTeam.getUserId();
+                    User userById = userOpenFeign.getUserById(userId);
                     if (userById != null) {
                         UserVo userVo = new UserVo();
                         BeanUtils.copyProperties(userById, userVo);
@@ -253,9 +257,9 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     /**
      * 加入队伍
      *
-     * @param teamJoinRequest
-     * @param request
-     * @return
+     * @param teamJoinRequest team
+     * @param request         登录
+     * @return v
      */
     @Override
     public boolean addUserTeam(TeamJoinRequest teamJoinRequest, HttpServletRequest request) {
@@ -301,9 +305,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 }
 
                 // 队伍已满
-                wrapper = new QueryWrapper<>();
-                wrapper.eq("team_id", teamId);
-                count = userTeamService.count(wrapper);
+                count = countUserTeamByTeamId(teamId);
                 if (count > team.getMaxNum()) {
                     throw new GlobalException(ErrorCode.NULL_ERROR, "队伍已满");
                 }
@@ -313,13 +315,13 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 wrapper.eq("user_id", loginUser.getId());
                 count = userTeamService.count(wrapper);
                 if (count > 0) {
-                    throw new GlobalException(ErrorCode.NULL_ERROR, "用户以加入队伍");
+                    throw new GlobalException(ErrorCode.NULL_ERROR, "重复加入队伍");
                 }
 
                 // 保存
                 UserTeam userTeam = new UserTeam();
                 userTeam.setName(team.getName());
-                userTeam.setUserId(Long.parseLong(loginUser.getId()));
+                userTeam.setUserId(loginUser.getId());
                 userTeam.setTeamId(team.getId());
                 userTeam.setJoinTime(new Date());
                 return userTeamService.save(userTeam);
@@ -362,7 +364,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             }
         }
         team = new Team();
-        team.setId(Long.parseLong(teamUpdateRequest.getId()));
+        team.setId(teamUpdateRequest.getId());
         BeanUtils.copyProperties(teamUpdateRequest, team);
         team.setPassword(MD5.getTeamMD5(team.getPassword()));
         boolean b = this.updateById(team);
@@ -370,8 +372,10 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "跟新失败");
         }
     }
+
     // 退出退伍
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean quitTeam(String teamId, HttpServletRequest request) {
         if (!StringUtils.hasText(teamId)) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
@@ -379,25 +383,59 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         User loginUser = UserUtils.getLoginUser(request);
 
         Team team = this.getById(teamId);
-        if (team == null || team.getId() < 0) {
+        if (team == null || !StringUtils.hasText(team.getId())) {
             throw new GlobalException(ErrorCode.NULL_ERROR, "没有该队伍");
         }
-        Long userId = team.getUserId();
-        boolean admin = UserUtils.isAdmin(request);
-        String loginUserId = loginUser.getId();
-        QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
-        userTeamQueryWrapper.eq("user_id", loginUserId);
-        userTeamQueryWrapper.eq("team_id", teamId);
-        UserTeam userTeam = userTeamService.getOne(userTeamQueryWrapper);
-        if (userTeam ==null) {
-            throw new GlobalException(ErrorCode.NULL_ERROR, "不在队伍中");
+        QueryWrapper<UserTeam> wrapper = new QueryWrapper<>();
+        String userId = loginUser.getId();
+        wrapper.eq("team_id", teamId);
+        wrapper.eq("user_id", userId);
+        long count = userTeamService.count(wrapper);
+        if (count != 1) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "未加入队伍");
         }
-        Long teamUserId = userTeam.getUserId();
-        if (!loginUserId.equals(userId.toString()) || !admin || !loginUserId.equals(teamUserId.toString())) {
-            throw new GlobalException(ErrorCode.NO_AUTH);
+        long teamHasJoinName = this.countUserTeamByTeamId(teamId);
+        // 队伍只剩一人
+
+        if (teamHasJoinName == 1) {
+            this.removeById(teamId);
+        } else {
+            if (userId.equals(team.getUserId())) {
+                // 队长 退出
+                QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
+                userTeamQueryWrapper.eq("team_id", teamId);
+                userTeamQueryWrapper.last("order by join_time asc limit 2");
+                List<UserTeam> list = userTeamService.list(userTeamQueryWrapper);
+                if (CollectionUtils.isEmpty(list) || list.size() <= 1) {
+                    throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION);
+                }
+                UserTeam userTeam = list.get(1);
+                String teamUserId = userTeam.getUserId();
+                // 跟新队长
+                Team updateTeam = new Team();
+                updateTeam.setId(teamId);
+                updateTeam.setUserId(teamUserId);
+                boolean update = this.updateById(updateTeam);
+                if (!update) {
+                    throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "跟新队长失败");
+                }
+            }
         }
-        // TODO 如果是创建者进行退位
-        return userTeamService.removeById(userTeam.getId());
+        // 移除用户
+        return userTeamService.remove(wrapper);
+    }
+
+    /**
+     * 根据 team ID 获取加入的人数
+     *
+     * @param teamId 队伍id
+     * @return 数量
+     */
+    private long countUserTeamByTeamId(String teamId) {
+        QueryWrapper<UserTeam> wrapper = new QueryWrapper<>();
+        wrapper.eq("team_id", teamId);
+        return userTeamService.count(wrapper);
+
     }
 }
 

@@ -93,6 +93,7 @@ public class InsertUserTest {
                 userService.saveBatch(list, 1000);
                 System.out.println("threadName :" + Thread.currentThread().getName());
             },executor);
+
             futureList.add(future);
         }
         CompletableFuture.allOf(futureList.toArray(new CompletableFuture[]{})).join();
@@ -100,4 +101,7 @@ public class InsertUserTest {
         stopWatch.stop();
         System.out.println(stopWatch.getTotalTimeMillis());
     }
+
+
+
 }

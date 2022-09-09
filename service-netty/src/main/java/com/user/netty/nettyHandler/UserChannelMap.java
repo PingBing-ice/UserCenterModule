@@ -3,8 +3,8 @@ package com.user.netty.nettyHandler;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import io.netty.channel.Channel;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author ice
@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class UserChannelMap {
     // 用来保存用户id与通道的Map
-    private static final Map<String, Channel> userChannelMap = new HashMap<>();
+    private static final Map<String, Channel> userChannelMap = new ConcurrentHashMap<>();
 
 
     public static void put(String userId, Channel channel) {

@@ -12,12 +12,15 @@ import com.user.model.constant.UserConstant;
 import com.user.util.exception.GlobalException;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
-
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -37,6 +40,9 @@ public class UserFriendController {
     private IUserFriendService friendService;
     @Autowired
     private IUserFriendReqService friendReqService;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
 
     // 添加好友
@@ -103,13 +109,28 @@ public class UserFriendController {
      */
     @GetMapping("/selectFriendList")
     public B<List<User>> selectFriendList(HttpServletRequest request) {
+
         User user = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
         if (user == null) {
             throw new GlobalException(ErrorCode.NO_LOGIN, "请先登录");
         }
         String userId = user.getId();
-        List<User> userList = friendService.selectFriend(userId);
+        String redisKey = "selectFriendList::" + userId;
+        List<User> userRedisList = (List<User>) redisTemplate.opsForValue().get(redisKey);
+        if (!CollectionUtils.isEmpty(userRedisList)) {
+            return B.ok(userRedisList);
+        }
 
+        List<User> userList = friendService.selectFriend(userId);
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            try {
+                redisTemplate.opsForValue().set(redisKey, userList, 180, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.error("缓存失败");
+                log.error(e.getMessage());
+            }
+        });
+        future.join();
         return B.ok(userList);
     }
 }

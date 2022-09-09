@@ -7,4 +7,8 @@ public class LLLLL {
     public LLLLL() {
         System.out.println("lllllllllllllllllllllllll");
     }
+
+    public void ok() {
+        System.out.println("ok");
+    }
 }

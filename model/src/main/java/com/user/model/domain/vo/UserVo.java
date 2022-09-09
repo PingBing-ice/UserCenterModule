@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @ApiModel(value = "User对象", description = "用户表")
 public class UserVo implements Serializable{
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = -6204388767292859512L;
 
     @ApiModelProperty("id")
     private String id;

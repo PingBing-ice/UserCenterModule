@@ -20,7 +20,7 @@ public class UserTeam implements Serializable {
      * id
      */
     @TableId(type = IdType.ASSIGN_ID)
-    private Long id;
+    private String id;
 
     /**
      * 队伍的名称
@@ -30,12 +30,12 @@ public class UserTeam implements Serializable {
     /**
      * 用户id
      */
-    private Long userId;
+    private String userId;
 
     /**
      * 队伍id
      */
-    private Long teamId;
+    private String teamId;
 
     /**
      * 加入队伍时间

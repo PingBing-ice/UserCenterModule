@@ -40,7 +40,7 @@ class B<T> implements Serializable {
     }
 
     public B(ErrorCode errorCode, String message, String description) {
-        this.errorCode = errorCode;
+        this.code = errorCode.getCode();
         this.message = message;
         this.description = description;
     }

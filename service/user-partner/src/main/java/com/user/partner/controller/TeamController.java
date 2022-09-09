@@ -1,8 +1,8 @@
 package com.user.partner.controller;
 
 import com.user.model.domain.Team;
-import com.user.model.domain.vo.TeamUserVo;
 import com.user.model.domain.User;
+import com.user.model.domain.vo.TeamUserVo;
 import com.user.model.dto.TeamQuery;
 import com.user.model.request.TeamAddRequest;
 import com.user.model.request.TeamJoinRequest;
@@ -14,6 +14,7 @@ import com.user.util.exception.GlobalException;
 import com.user.util.utils.UserUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -30,27 +31,34 @@ public class TeamController {
     @Autowired
     private TeamService teamService;
 
+    /**
+     * 创建队伍
+     * @param teamAddRequest
+     * @param request
+     * @return
+     */
     @PostMapping("addTeam")
-    public B<Long> addTeam(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request) {
+    public B<String> addTeam(@RequestBody TeamAddRequest teamAddRequest, HttpServletRequest request) {
         if (teamAddRequest == null) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
+
         User loginUser = UserUtils.getLoginUser(request);
         Team team = new Team();
         BeanUtils.copyProperties(teamAddRequest,team);
-        long userID = teamService.addTeam(team, loginUser);
-        if (userID <= 0) {
+        String userID = teamService.addTeam(team, loginUser);
+        if (!StringUtils.hasText(userID)) {
             return B.error(ErrorCode.PARAMS_ERROR,"队伍保存失败");
         }
         return B.ok(userID);
     }
 
-    @GetMapping("/delete")
-    public B<Boolean> deleteById(@RequestParam("id") long id,HttpServletRequest request) {
-        if (id <= 0) {
+    @PostMapping("/delete")
+    public B<Boolean> deleteTeamById(@RequestBody long teamId,HttpServletRequest request) {
+        if (teamId <= 0) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
-        boolean b = teamService.deleteById(id,request);
+        boolean b = teamService.deleteById(teamId,request);
         if (!b) {
             throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "删除失败");
         }
@@ -103,6 +111,12 @@ public class TeamController {
         return B.error(ErrorCode.ERROR);
     }
 
+    /**
+     * 退出队伍
+     * @param teamId
+     * @param request
+     * @return
+     */
     @GetMapping("/quit")
     public B<Boolean> quitTeam(@RequestParam String teamId, HttpServletRequest request) {
         boolean isQuit = teamService.quitTeam(teamId, request);
@@ -111,4 +125,5 @@ public class TeamController {
         }
         return B.ok();
     }
+
 }
