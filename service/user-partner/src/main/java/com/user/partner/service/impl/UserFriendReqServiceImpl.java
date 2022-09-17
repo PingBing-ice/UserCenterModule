@@ -4,12 +4,14 @@ package com.user.partner.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.user.model.domain.User;
+import com.user.model.domain.UserFriend;
 import com.user.model.domain.UserFriendReq;
+import com.user.openfeign.UserOpenFeign;
 import com.user.partner.mapper.UserFriendReqMapper;
 import com.user.partner.service.IUserFriendReqService;
+import com.user.partner.service.IUserFriendService;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
-import com.user.util.openfeign.UserOpenFeign;
 import com.user.util.utils.UserUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,19 +32,27 @@ import java.util.stream.Collectors;
 public class UserFriendReqServiceImpl extends ServiceImpl<UserFriendReqMapper, UserFriendReq> implements IUserFriendReqService {
     @Autowired
     private UserOpenFeign userOpenFeign;
+    @Autowired
+    private IUserFriendService userFriendService;
 
     @Override
-    public int sendRequest(String fromUserId, String toUserId) {
+    public int sendRequest(String userId, String toUserId) {
+        QueryWrapper<UserFriend> friendQueryWrapper = new QueryWrapper<>();
+        friendQueryWrapper.eq("user_id", userId).and(w -> w.eq("friends_id", toUserId))
+                .or().eq("user_id", toUserId).and(w -> w.eq("friends_id", userId));
+        long size = userFriendService.count(friendQueryWrapper);
+        if (size > 0) {
+            throw new GlobalException(ErrorCode.ERROR,"重复添加好友...");
+        }
         QueryWrapper<UserFriendReq> wrapper = new QueryWrapper<>();
-        wrapper.eq("from_userid", fromUserId);
+        wrapper.eq("from_userid", userId);
         wrapper.eq("to_userid", toUserId);
         Long count = baseMapper.selectCount(wrapper);
         if (count > 0) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
         UserFriendReq userFriendReq = new UserFriendReq();
-
-        userFriendReq.setFromUserid(fromUserId);
+        userFriendReq.setFromUserid(userId);
         userFriendReq.setToUserid(toUserId);
         return baseMapper.insert(userFriendReq);
     }

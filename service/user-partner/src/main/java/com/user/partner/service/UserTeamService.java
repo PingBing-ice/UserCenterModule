@@ -1,7 +1,11 @@
 package com.user.partner.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.user.model.domain.User;
 import com.user.model.domain.UserTeam;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
 * @author BING
@@ -10,4 +14,5 @@ import com.user.model.domain.UserTeam;
 */
 public interface UserTeamService extends IService<UserTeam> {
 
+    List<User> getUserTeamById(String teamId, HttpServletRequest request);
 }

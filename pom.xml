@@ -20,6 +20,7 @@
         <module>model</module>
         <module>service-gateway</module>
         <module>service-netty</module>
+        <module>openFeign</module>
     </modules>
 
     <properties>

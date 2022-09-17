@@ -1,4 +1,5 @@
-package com.user.util.openfeign;
+package com.user.openfeign;
+
 
 import com.user.model.domain.User;
 import org.springframework.cloud.openfeign.FeignClient;

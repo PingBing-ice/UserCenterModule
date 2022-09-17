@@ -10,6 +10,7 @@
     <modules>
         <module>user-center</module>
         <module>user-partner</module>
+        <module>user-oss</module>
     </modules>
     <modelVersion>4.0.0</modelVersion>
 
@@ -30,6 +31,11 @@
                     <groupId>com.google.guava</groupId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.user</groupId>
+            <artifactId>openFeign</artifactId>
+            <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.user</groupId>

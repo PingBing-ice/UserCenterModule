@@ -30,6 +30,11 @@ public class TeamUserVo implements Serializable {
      */
     private String userId;
 
+
+    /**
+     * 队伍id
+     */
+    private String teamId;
     /**
      * 描述
      */
@@ -40,7 +45,10 @@ public class TeamUserVo implements Serializable {
      */
     private Long maxNum;
 
-
+    /**
+     * 创建时间
+     */
+    private Date createTime;
     /**
      * 状态
      */

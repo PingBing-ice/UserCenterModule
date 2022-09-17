@@ -2,8 +2,7 @@ package com.user.usercenter.controller;
 
 
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.user.model.constant.RedisKey;
 import com.user.model.domain.User;
 import com.user.model.request.UserLoginRequest;
 import com.user.model.request.UserRegisterRequest;
@@ -12,6 +11,7 @@ import com.user.usercenter.service.IUserService;
 import com.user.util.common.B;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
+import com.user.util.utils.ThreadUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -22,8 +22,8 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 
@@ -59,20 +59,17 @@ public class UserController {
     // 用户注册
     @PostMapping("/Register")
     public B<Long> userRegister(@RequestBody UserRegisterRequest userRegister) {
+
         log.info("用户注册!!!!!!!!!!");
         if (userRegister == null) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
-        String userAccount = userRegister.getUserAccount();
-        String password = userRegister.getPassword();
-        String checkPassword = userRegister.getCheckPassword();
-        String planetCode = userRegister.getPlanetCode();
-        boolean hasEmpty = StrUtil.hasEmpty(userAccount, password, checkPassword, planetCode);
-        if (hasEmpty) {
-            throw new GlobalException(ErrorCode.NULL_ERROR);
-        }
-        Long aLong = userService.userRegister(userAccount, password, checkPassword, planetCode);
 
+        Long aLong = userService.userRegister(userRegister);
+        Boolean hasKey = redisTemplate.hasKey(RedisKey.redisIndexKey);
+        if (hasKey) {
+            redisTemplate.delete(RedisKey.redisIndexKey);
+        }
         return B.ok(aLong);
     }
 
@@ -113,21 +110,10 @@ public class UserController {
 
     // 查询用户
     @GetMapping("/searchUser")
-    public B<List<User>> searchUser(String username, HttpServletRequest request) {
-        log.info("查询用户!!!!!!!!!!");
-        boolean admin = userService.isAdmin(request);
-        if (!admin) {
-            throw new GlobalException(ErrorCode.PARAMS_ERROR, "你不是管理员");
-        }
-        QueryWrapper<User> wrapper = new QueryWrapper<>();
-        // 如果name有值
-        if (StringUtils.isNotBlank(username)) {
-            wrapper.like("username", username);
-        }
-        List<User> list = userService.list(wrapper);
+    public B<Map<String, Object>> searchUser(@RequestParam(required = false) String username,@RequestParam(required = false) Long current, Long size, HttpServletRequest request) {
+        Map<String, Object> user = userService.searchUser(request, username, current, size);
         // 通过stream 流的方式将列表里的每个user进行脱敏
-        list = list.stream().peek(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
-        return B.ok(list);
+        return B.ok(user);
     }
     // 管理员删除用户
     @PostMapping("/delete")
@@ -151,6 +137,8 @@ public class UserController {
         Integer is = userService.updateUser(user, request);
         return B.ok(is);
     }
+
+
 
     /**
      * 用户注销
@@ -205,18 +193,21 @@ public class UserController {
     @GetMapping("/recommend")
     public B<Map<String, Object>> recommendUser(@RequestParam(required = false) long current, long size, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
-        String redisKey = String.format("user:recommend:%s", loginUser.getId());
-        Map<String,Object> userMap = (Map<String,Object>)redisTemplate.opsForValue().get(redisKey);
+
+        Map<String,Object> userMap = (Map<String,Object>)redisTemplate.opsForValue().get(RedisKey.redisIndexKey);
         if (userMap != null) {
             return B.ok(userMap);
         }
         Map<String,Object>map = userService.selectPageIndexList(current, size);
-        try {
-            redisTemplate.opsForValue().set(redisKey, map, 180, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            log.error("缓存失败!!");
-            log.error(e.getMessage());
-        }
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            try {
+                redisTemplate.opsForValue().set(RedisKey.redisIndexKey, map, 180, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.error("缓存失败!!");
+                log.error(e.getMessage());
+            }
+        }, ThreadUtil.getThreadPool());
+        future.join();
         return B.ok(map);
     }
 
@@ -235,5 +226,14 @@ public class UserController {
             return B.error(ErrorCode.NULL_ERROR);
         }
         return B.ok(friendList);
+    }
+
+    /**
+     * 根据单个标签搜索
+     */
+    @GetMapping("/searchUserTag")
+    public B<List<User>> searchUserTag(@RequestParam("tag")String tag,HttpServletRequest request) {
+        List<User> userList = userService.searchUserTag(tag, request);
+        return B.ok(userList);
     }
 }

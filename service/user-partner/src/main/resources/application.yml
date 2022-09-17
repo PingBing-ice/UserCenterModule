@@ -4,6 +4,9 @@ server:
     context-path: /partner
 
 spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
   rabbitmq:
     username: admin
     password: 123456

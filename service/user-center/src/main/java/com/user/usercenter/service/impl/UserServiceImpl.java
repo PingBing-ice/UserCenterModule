@@ -1,29 +1,34 @@
 package com.user.usercenter.service.impl;
 
 
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
-import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.user.util.common.ErrorCode;
+import com.user.model.constant.RedisKey;
 import com.user.model.domain.User;
-import com.user.util.exception.GlobalException;
+import com.user.model.request.UserRegisterRequest;
 import com.user.usercenter.mapper.UserMapper;
 import com.user.usercenter.service.IUserService;
+import com.user.util.common.ErrorCode;
+import com.user.util.exception.GlobalException;
 import com.user.util.utils.MD5;
+import com.user.util.utils.TimeUtils;
+import com.user.util.utils.UserUtils;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-
+import org.springframework.util.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -44,8 +49,24 @@ import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
 
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+
+
     @Override
-    public Long userRegister(String userAccount, String password, String checkPassword, String planetCode) {
+    public Long userRegister(UserRegisterRequest userRegister) {
+        String userAccount = userRegister.getUserAccount();
+        String password = userRegister.getPassword();
+        String checkPassword = userRegister.getCheckPassword();
+        String planetCode = userRegister.getPlanetCode();
+        if (!StringUtils.hasText(planetCode)) {
+            planetCode = RandomUtil.randomInt(10, 10000) + "";
+        }
+        boolean hasEmpty = StrUtil.hasEmpty(userAccount, password, checkPassword, planetCode);
+        if (hasEmpty) {
+            throw new GlobalException(ErrorCode.NULL_ERROR);
+        }
         // 1. 校验
         if (StrUtil.hasEmpty(userAccount, password, checkPassword, planetCode)) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -271,17 +292,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String tel = updateUser.getTel();
         String email = updateUser.getEmail();
         Integer isDelete = updateUser.getIsDelete();
+        String tags = updateUser.getTags();
+
         if (isDelete != null) {
             throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "SB");
         }
-        if (StringUtils.isEmpty(userId) && Integer.parseInt(userId) <= 0) {
+
+        if (!StringUtils.hasText(userId) || Long.parseLong(userId) <= 0) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
 
-        if (StringUtils.isEmpty(username) && StringUtils.isEmpty(tel) && StringUtils.isEmpty(email)) {
+        if (!StringUtils.hasText(username) && !StringUtils.hasText(tel) &&
+                !StringUtils.hasText(email) && !StringUtils.hasText(tags)) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
-        if (org.springframework.util.StringUtils.hasText(gender) && !gender.equals("男") && !gender.equals("女")) {
+        if (StringUtils.hasText(gender) && !gender.equals("男") && !gender.equals("女")) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
         if (!isAdmin(loginUser) && !userId.equals(loginUser.getId())) {
@@ -291,22 +316,32 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (oldUser == null) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
+
+        if (StringUtils.hasText(tags)) {
+            if (!oldUser.getTags().equals(tags)) {
+                return this.TagsUtil(userId, updateUser);
+            }else {
+                throw new GlobalException(ErrorCode.NULL_ERROR,"重复提交...");
+            }
+        }
         return baseMapper.updateById(updateUser);
 
     }
 
     public boolean isAdmin(User user) {
-
         return user != null && Objects.equals(user.getRole(), ADMIN_ROLE);
     }
 
     @Override
     public List<User> friendUserName(String userID, String friendUserName) {
+        if (!StringUtils.hasText(friendUserName)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR);
+        }
         QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
         userQueryWrapper.like("user_account", friendUserName);
         List<User> userList = baseMapper.selectList(userQueryWrapper);
         if (userList.size() == 0) {
-            return null;
+            throw new GlobalException(ErrorCode.NULL_ERROR, "查无此人");
         }
         userList = userList.stream().filter(user -> !userID.equals(user.getId())).collect(Collectors.toList());
         userList.forEach(this::getSafetyUser);
@@ -324,5 +359,72 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new GlobalException(ErrorCode.NO_LOGIN);
         }
         return user;
+    }
+
+    public int TagsUtil(String userId, User updateUser) {
+        String tagKey = RedisKey.tagRedisKey + userId;
+        String tagNum =  redisTemplate.opsForValue().get(tagKey);
+        if (!StringUtils.hasText(tagNum)) {
+            int i = baseMapper.updateById(updateUser);
+            if (i <= 0) {
+                throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "保存失败...");
+            }
+            redisTemplate.opsForValue().set(tagKey, "1",
+                    TimeUtils.getRemainSecondsOneDay(new Date()), TimeUnit.SECONDS);
+            return i;
+        }
+        int parseInt = Integer.parseInt(tagNum);
+        if (parseInt > 5) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "今天修改次数以上限...");
+        }
+        int i = baseMapper.updateById(updateUser);
+        if (i <= 0) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "保存失败...");
+        }
+        redisTemplate.opsForValue().increment(tagKey);
+        Boolean hasKey = redisTemplate.hasKey(RedisKey.redisIndexKey);
+        if (Boolean.TRUE.equals(hasKey)) {
+            redisTemplate.delete(RedisKey.redisIndexKey);
+        }
+        return i;
+    }
+
+    @Override
+    public Map<String, Object> searchUser(HttpServletRequest request, String username, Long current, Long size) {
+        boolean admin = this.isAdmin(request);
+        if (!admin) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "你不是管理员");
+        }
+        QueryWrapper<User> wrapper = new QueryWrapper<>();
+        // 如果name有值
+        if (StringUtils.hasText(username)) {
+            wrapper.like("username", username);
+        }
+        if (current == null || size == null) {
+            current = 1L;
+            size = 30L;
+        }
+        Page<User> page = new Page<>(current, size);
+        Page<User> userPage = baseMapper.selectPage(page, wrapper);
+        userPage.getRecords().forEach(this::getSafetyUser);
+        Map<String, Object> map = new HashMap<>();
+        map.put("records", userPage.getRecords());
+        map.put("current", userPage.getCurrent());
+        map.put("total", userPage.getTotal());
+        return map;
+    }
+
+    @Override
+    public List<User> searchUserTag(String tag, HttpServletRequest request) {
+        if (!StringUtils.hasText(tag)) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR);
+        }
+        UserUtils.getLoginUser(request);
+        QueryWrapper<User> wrapper = new QueryWrapper<>();
+        wrapper.like("tags", tag);
+        Page<User> commentPage = baseMapper.selectPage(new Page<>(1, 200), wrapper);
+        List<User> list = commentPage.getRecords();
+        list.parallelStream().forEach(this::getSafetyUser);
+        return list;
     }
 }

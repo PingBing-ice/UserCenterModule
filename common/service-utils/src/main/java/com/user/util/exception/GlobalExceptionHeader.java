@@ -17,15 +17,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @Log4j2
 public class GlobalExceptionHeader {
-
-    @ExceptionHandler(GlobalException.class)
+    // ExceptionHandlerExceptionResolver
+    // TransientDataAccessResourceException
+    @ExceptionHandler({GlobalException.class})
     public B<ErrorCode> businessExceptionHeader(GlobalException e) {
         log.info(e.getMessage(),e.getCode(),e.getDescription(),e);
-        return B.error(e.getCode(),e.getMessage(),e.getDescription());
+        return B.error(ErrorCode.PARAMS_ERROR);
     }
-    @ExceptionHandler(RuntimeException.class)
-    public B<ErrorCode> runExceptionHeader(RuntimeException e) {
+    @ExceptionHandler({RuntimeException.class,Exception.class})
+    public B<ErrorCode> runExceptionHeader(Exception e) {
         log.info("runException",e);
-        return B.error(ErrorCode.SYSTEM_EXCEPTION,e.getMessage(),"");
+        return B.error(ErrorCode.SYSTEM_EXCEPTION);
     }
 }

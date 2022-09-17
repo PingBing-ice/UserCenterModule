@@ -67,4 +67,32 @@ public class RabbitMqConfig {
                                 @Qualifier("redisQueue") Queue redisQueue) {
         return BindingBuilder.bind(redisQueue).to(dieExchange).with(MqClient.REDIS_KEY);
     }
+    @Bean("teamQueue")
+    public Queue teamQueue() {
+        return QueueBuilder.durable(MqClient.TEAM_QUEUE).build();
+    }
+    @Bean
+    public Binding teamBinding(@Qualifier("teamQueue")Queue teamQueue,
+                               @Qualifier("nettyExchange")DirectExchange nettyExchange) {
+        return BindingBuilder.bind(teamQueue).to(nettyExchange).with(MqClient.TEAM_KEY);
+    }
+
+    @Bean("readTeamQueue")
+    public Queue ReadTeamQueue() {
+        return QueueBuilder.durable(MqClient.READ_TEAM_QUEUE).build();
+    }
+    @Bean
+    public Binding ReadTeamQueueBinding(@Qualifier("readTeamQueue")Queue ReadTeamQueue,
+                               @Qualifier("nettyExchange")DirectExchange nettyExchange) {
+        return BindingBuilder.bind(ReadTeamQueue).to(nettyExchange).with(MqClient.READ_TEAM_KEY);
+    }
+    @Bean("ossQueue")
+    public Queue ossQueue() {
+        return QueueBuilder.durable(MqClient.OSS_QUEUE).build();
+    }
+    @Bean
+    public Binding ossQueueBinding(@Qualifier("ossQueue")Queue ossQueue,
+                                        @Qualifier("nettyExchange")DirectExchange nettyExchange) {
+        return BindingBuilder.bind(ossQueue).to(nettyExchange).with(MqClient.OSS_KEY);
+    }
 }

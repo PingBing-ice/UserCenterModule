@@ -3,6 +3,7 @@ package com.user.usercenter;
 import com.user.model.domain.User;
 
 import com.user.usercenter.service.IUserService;
+import com.user.util.utils.ThreadUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,7 @@ public class InsertUserTest {
     @Autowired
     private IUserService userService;
 
-    private final ExecutorService executor = new ThreadPoolExecutor(60, 1000, 10000, TimeUnit.MINUTES, new ArrayBlockingQueue<>(10000));
+
 
     @Test
     public void doInsertUser() {
@@ -92,7 +93,7 @@ public class InsertUserTest {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 userService.saveBatch(list, 1000);
                 System.out.println("threadName :" + Thread.currentThread().getName());
-            },executor);
+            }, ThreadUtil.getThreadPool());
 
             futureList.add(future);
         }

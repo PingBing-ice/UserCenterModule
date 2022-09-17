@@ -4,8 +4,10 @@ package com.user.partner.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.user.model.domain.User;
 import com.user.model.domain.UserFriend;
+import com.user.model.resp.FriendUserResponse;
 
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -23,5 +25,20 @@ public interface IUserFriendService extends IService<UserFriend> {
      */
     void addFriendReq(String reqId,String userId);
 
+    /**
+     * 查找好友
+     * @param userId
+     * @return
+     */
     List<User> selectFriend(String userId);
+
+    FriendUserResponse getFriendUser(String friendId, HttpServletRequest request);
+
+    /**
+     * 删除好友
+     * @param friendId
+     * @param userId
+     * @return
+     */
+    boolean delFriendUser(String friendId, String userId);
 }

@@ -22,15 +22,17 @@ class UserCenterApplicationTests {
                     builder.author("ice") // 设置作者
                             .enableSwagger() // 开启 swagger 模式
                             .fileOverride() // 覆盖已生成文件
-                            .outputDir("D:\\JavaUser\\UserCenterModule\\user-center"+"//src/main//java"); // 指定输出目录
+                            .outputDir("D:\\JavaUser\\User-Center\\UserCenterModule\\service\\user-center"+
+                                    "//src/main//java"); // 指定输出目录
                 })
                 .packageConfig(builder -> {
                     builder.parent("com.user") // 设置父包名
                             .moduleName("usercenter") // 设置父包模块名
-                            .pathInfo(Collections.singletonMap(OutputFile.xml, "D:\\JavaUser\\UserCenterModule\\user-center"+"//src/main//java//com//user//usercenter//mapper//xml")); // 设置mapperXml生成路径
+                            .pathInfo(Collections.singletonMap(OutputFile.xml, "D:\\JavaUser\\User-Center\\UserCenterModule\\service\\user-center"+
+                                    "//src//main//java//com/user//usercenter//mapper//xml")); // 设置mapperXml生成路径
                 })
                 .strategyConfig(builder -> {
-                    builder.addInclude("chat_record","user_friend","user_friend_req") // 设置需要生成的表名
+                    builder.addInclude("user_label") // 设置需要生成的表名
                             .addTablePrefix(); // 设置过滤表前缀
                 })
                 .templateEngine(new FreemarkerTemplateEngine()) // 使用Freemarker引擎模板，默认的是Velocity引擎模板

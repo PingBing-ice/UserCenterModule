@@ -1,11 +1,12 @@
 package com.user.netty.nettyHandler;
 
 import com.google.gson.Gson;
-
+import com.user.model.constant.ChatType;
 import com.user.model.domain.ChatRecord;
-
-
-import com.user.netty.utils.SpringUtil;
+import com.user.model.domain.TeamChatRecord;
+import com.user.model.domain.vo.ChatRecordVo;
+import com.user.netty.utils.SpringUtilObject;
+import com.user.openfeign.TeamOpenFeign;
 import com.user.rabbitmq.config.mq.MqClient;
 import com.user.rabbitmq.config.mq.RabbitService;
 import io.netty.channel.Channel;
@@ -15,14 +16,17 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.CollectionUtils;
 
 import java.text.SimpleDateFormat;
+import java.util.List;
 
 /**
  * @author ice
  * @date 2022/7/22 16:27
  */
-
+@Slf4j
 public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame> {
 
     // 用来保存所有的客服端连接
@@ -37,37 +41,69 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
         String message = msg.text();
         Gson gson = new Gson();
         Message mess = gson.fromJson(message, Message.class);
-        System.out.println(mess+"mess=======================================");
-        RabbitService recordService = SpringUtil.getBean(RabbitService.class);
-        switch (mess.getType().toString()) {
-            case "0":
+        log.info(mess+"mess====================");
+        RabbitService recordService = SpringUtilObject.getBean(RabbitService.class);
+
+
+        switch (mess.getType()) {
+            case ChatType.CONNECT:
                 // 建立用户与通道的关联
                 String userId = mess.getChatRecord().getUserId();
                 UserChannelMap.put(userId, ctx.channel());
-                System.out.println("建立用户 :" + userId + "与通道的关联: " + ctx.channel().id());
+                log.info("建立用户 :" + userId + "与通道的关联: " + ctx.channel().id().asLongText());
                 UserChannelMap.print();
                 break;
             // 处理客服端发送消息
-            case "1":
+            case ChatType.FRIEND:
                 // 将聊天消息保存到数据库
-                ChatRecord chatRecord = mess.getChatRecord();
-                System.out.println(chatRecord+"chatRecord=======================================");
+                ChatRecordVo chatRecord = mess.getChatRecord();
+                log.info(chatRecord+"chatRecord=======================================");
                 // 发送消息好友在线,可以直接发送消息给好友
-                Channel channel= UserChannelMap.getFriendChannel(chatRecord.getFriendId());
+                Channel channel= UserChannelMap.getFriendChannel(chatRecord.getSendId());
+
+                ChatRecord record = new ChatRecord();
+                record.setUserId(chatRecord.getUserId());
+                record.setFriendId(chatRecord.getSendId());
+                record.setMessage(chatRecord.getMessage());
+
                 if (channel != null) {
-                    chatRecord.setHasRead(1);
-                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,chatRecord);
+                    record.setHasRead(1);
+                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,record);
                     channel.writeAndFlush(new TextWebSocketFrame(gson.toJson(mess)));
                 }else {
-                    chatRecord.setHasRead(0);
-                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,chatRecord);
+                    record.setHasRead(0);
+                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,record);
                     // 不在线,暂时不发送
-                    System.out.println("用户 "+chatRecord.getFriendId() +"不在线!!!!");
+                    log.info("用户 "+chatRecord.getSendId() +"不在线!!!!");
                 }
                 break;
-            case "3":
-                System.out.println("接收心跳消息: "+ message);
+            case ChatType.TEAM:
+                TeamOpenFeign team = SpringUtilObject.getBean(TeamOpenFeign.class);
+                String teamId = mess.getChatRecord().getSendId();
+                List<String> teamUserId = team.getUserTeamListById(teamId, mess.getChatRecord().getUserId());
+                if (!CollectionUtils.isEmpty(teamUserId)) {
+                    TeamChatRecord teamChatRecord = new TeamChatRecord();
+                    teamChatRecord.setUserId(mess.getChatRecord().getUserId());
+                    teamChatRecord.setTeamId(teamId);
+                    teamChatRecord.setMessage(mess.getChatRecord().getMessage());
+                    teamChatRecord.setHasRead(0);
+                    teamUserId.forEach(id -> {
+                        Channel teamUserChannel = UserChannelMap.getFriendChannel(id);
+                        if (teamUserChannel != null) {
+                            teamUserChannel.writeAndFlush(new TextWebSocketFrame(gson.toJson(mess)));
+                        }
+                    });
+                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.TEAM_KEY,teamChatRecord);
+
+                }else {
+                    log.info("队伍人员为空: "+ message);
+                }
                 break;
+            case ChatType.HEARTBEAT:
+                log.info("接收心跳消息: "+ message);
+                break;
+
+
 
         }
 
@@ -76,13 +112,14 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     // 新的客服端连接时调用
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
+        log.info("创建连接{}",ctx.channel().id().asLongText());
         channels.add(ctx.channel());
     }
 
     // 出现异常时调用
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        System.out.println("出现异常,关闭连接");
+        log.error("出现异常,关闭连接");
         cause.printStackTrace();
         // 通道 出现异常 移除该通道
         String channelId = ctx.channel().id().asLongText();
@@ -92,7 +129,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
         // 通道断开连接时 移除该通道
-        System.out.println("关闭连接");
+        log.error("关闭连接 {}",ctx.channel().id().asLongText());
         String channelId = ctx.channel().id().asLongText();
         UserChannelMap.removeByChannelId(channelId);
     }

@@ -19,7 +19,7 @@ import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 public class UserUtils {
     public static User getLoginUser(HttpServletRequest request) {
         if (request == null) {
-            return null;
+            throw new GlobalException(ErrorCode.NO_LOGIN);
         }
         User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
         if (user == null) {

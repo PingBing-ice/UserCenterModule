@@ -85,3 +85,39 @@ create table user_team
     update_time  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
 )
     comment '队伍表';
+
+create table team_chat_record
+(
+    id          varchar(255)                       not null
+        primary key,
+    user_id     varchar(255)                       null comment '用户id',
+    team_id   varchar(255)                       null comment '队伍id',
+    message     varchar(1024)                      null comment '消息',
+    has_read    int(1)   default 0                 null comment '是否已读 0 未读',
+    create_time datetime default CURRENT_TIMESTAMP not null,
+    is_delete   tinyint  default 0                 not null comment '是否删除'
+
+)
+    comment '队伍聊天记录表';
+
+create table read_team_chat
+(
+    id          varchar(255)                       not null
+        primary key,
+    user_id     varchar(255)                       null comment '用户id',
+    team_id   varchar(255)                       null comment '队伍id',
+    has_read    int   default 0                 null comment '未读的信息条数',
+    create_time datetime default CURRENT_TIMESTAMP not null,
+    is_delete   tinyint  default 0                 not null comment '是否删除'
+
+)
+    comment '队伍聊天记录表';
+
+create table `user_label`(
+    id varchar(22) not null primary key ,
+    label_type varchar(255)  null comment '标签类型',
+    label varchar(255) null  comment '标签',
+    is_delete    tinyint  default 0                 not null comment '是否删除',
+    create_time  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
+)comment '标签表';

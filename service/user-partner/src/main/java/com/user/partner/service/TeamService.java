@@ -66,4 +66,18 @@ public interface TeamService extends IService<Team> {
      * @return
      */
     boolean quitTeam(String teamId, HttpServletRequest request);
+
+    /**
+     * 查看用户加入的队伍
+     * @param request 1
+     * @return 200
+     */
+    List<TeamUserVo> getJoinTeamList(HttpServletRequest request);
+
+    /**
+     * 根据id获取信息
+     * @param id
+     * @return
+     */
+    TeamUserVo getByTeamId(String id);
 }

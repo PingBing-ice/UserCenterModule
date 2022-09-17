@@ -26,7 +26,11 @@ public class ChatRecordServiceImpl extends ServiceImpl<ChatRecordMapper, ChatRec
     public List<ChatRecord> selectAllList(String userId, String friendId) {
 
         QueryWrapper<ChatRecord> wrapper = new QueryWrapper<>();
-        wrapper.eq("user_id", userId).or().eq("user_id", friendId);
+        wrapper.eq("user_id", userId).and(q -> {
+            q.eq("friend_id", friendId);
+        }).or().eq("user_id", friendId).and(q -> {
+            q.eq("friend_id", userId);
+        });
         ChatRecord chatRecord = new ChatRecord();
         chatRecord.setHasRead(1);
         baseMapper.update(chatRecord, wrapper);

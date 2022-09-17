@@ -65,6 +65,13 @@ class B<T> implements Serializable {
         return b;
     }
 
+    public static <T> B<T> error() {
+        B<T> b = new B<>();
+        b.setCode(201);
+        b.setMessage("error");
+        b.setData(null);
+        return b;
+    }
 
     public static <T> B<T> error(Integer code, String message, String description) {
         return new B<>(code, message, description);

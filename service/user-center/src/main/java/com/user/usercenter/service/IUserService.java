@@ -2,6 +2,7 @@ package com.user.usercenter.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.user.model.domain.User;
+import com.user.model.request.UserRegisterRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -29,7 +30,7 @@ public interface IUserService extends IService<User> {
      * @param planetCode 编号
      * @return 返回id值
      */
-    Long userRegister(String userAccount, String password, String checkPassword,String planetCode);
+    Long userRegister(UserRegisterRequest userRegisterRequest);
 
     /**
      * 用户登录
@@ -85,4 +86,14 @@ public interface IUserService extends IService<User> {
     List<User> friendUserName(String userID, String friendUserName);
 
     Map<String, Object> selectPageIndexList(long current, long size);
+
+    Map<String, Object> searchUser(HttpServletRequest request, String username, Long current, Long size);
+
+    /**
+     * 根据单个标签搜索用户
+     * @param tag
+     * @param request
+     * @return
+     */
+    List<User> searchUserTag(String tag, HttpServletRequest request);
 }

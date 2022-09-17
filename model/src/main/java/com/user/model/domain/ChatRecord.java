@@ -1,11 +1,15 @@
 package com.user.model.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.io.Serializable;
-import java.time.LocalDateTime;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * <p>
@@ -22,6 +26,7 @@ public class ChatRecord implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @TableId(type = IdType.ASSIGN_ID)
     private String id;
 
     @ApiModelProperty("用户id ")
@@ -36,6 +41,7 @@ public class ChatRecord implements Serializable {
     private LocalDateTime createTime;
 
     @ApiModelProperty("是否删除")
+    @TableLogic
     private Integer isDelete;
 
     @ApiModelProperty("消息")

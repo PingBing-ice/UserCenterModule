@@ -78,22 +78,39 @@ public class TeamController {
     }
 
     @GetMapping("/get")
-    public B<Team> getTeamById(@RequestParam("id") long id) {
-        if (id <= 0) {
+    public B<TeamUserVo> getTeamById(@RequestParam("id") String id) {
+        if (!StringUtils.hasText(id)) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
-        Team team = teamService.getById(id);
+        TeamUserVo team = teamService.getByTeamId(id);
         if (team == null) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
         return B.ok(team);
     }
 
+    /**
+     * 根据条件查询所有的队伍
+     * @param teamQuery 条件
+     * @param request is
+     * @return 200
+     */
     @GetMapping("/list")
     public B<List<TeamUserVo>> getTeamList(TeamQuery teamQuery,HttpServletRequest request) {
         boolean admin = UserUtils.isAdmin(request);
         List<TeamUserVo> resultPage = teamService.getTeamList(teamQuery,admin);
         return B.ok(resultPage);
+    }
+
+    /**
+     * 查看用户加入的队伍
+     * @param request 1
+     * @return 200
+     */
+    @GetMapping("/Check")
+    public B<List<TeamUserVo>> getJoinTeamList(HttpServletRequest request) {
+        List<TeamUserVo> list=teamService.getJoinTeamList(request);
+        return B.ok(list);
     }
 
     /**

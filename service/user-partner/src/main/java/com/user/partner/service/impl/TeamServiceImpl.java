@@ -2,6 +2,7 @@ package com.user.partner.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.user.model.constant.RedisKey;
 import com.user.model.domain.Team;
 import com.user.model.domain.User;
 import com.user.model.domain.UserTeam;
@@ -11,12 +12,12 @@ import com.user.model.dto.TeamQuery;
 import com.user.model.enums.TeamStatusEnum;
 import com.user.model.request.TeamJoinRequest;
 import com.user.model.request.TeamUpdateRequest;
+import com.user.openfeign.UserOpenFeign;
 import com.user.partner.mapper.TeamMapper;
 import com.user.partner.service.TeamService;
 import com.user.partner.service.UserTeamService;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
-import com.user.util.openfeign.UserOpenFeign;
 import com.user.util.utils.MD5;
 import com.user.util.utils.UserUtils;
 import org.redisson.api.RLock;
@@ -30,6 +31,7 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -53,11 +55,39 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     @Resource
     private UserOpenFeign userOpenFeign;
 
+    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+
+    @Override
+    public TeamUserVo getByTeamId(String id) {
+        Team team = this.getById(id);
+        if (team == null) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR);
+        }
+        QueryWrapper<UserTeam> userTeamQueryWrapper = new QueryWrapper<>();
+        userTeamQueryWrapper.eq("team_id", id);
+        List<UserTeam> userTeams = userTeamService.list(userTeamQueryWrapper);
+        List<String> ids = new ArrayList<>();
+        userTeams.forEach(userTeam -> {
+            String userId = userTeam.getUserId();
+            ids.add(userId);
+        });
+        List<User> list = userOpenFeign.getListByIds(ids);
+        ArrayList<UserVo> userVos = new ArrayList<>();
+        list.forEach(user -> {
+            UserVo userVo = new UserVo();
+            BeanUtils.copyProperties(user,userVo);
+            userVos.add(userVo);
+        });
+        TeamUserVo teamUserVo = new TeamUserVo();
+        BeanUtils.copyProperties(team,teamUserVo);
+        teamUserVo.setUserVo(userVos);
+        return teamUserVo;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String addTeam(Team team, User loginUser) {
-        RLock lock = redissonClient.getLock("user:addTeam:key");
+        RLock lock = redissonClient.getLock(RedisKey.redisAddTeamLock);
         try {
             if (lock.tryLock(0, 3000, TimeUnit.MILLISECONDS)) {
                 //        校验信息
@@ -211,15 +241,14 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
         List<TeamUserVo> teamUserVos = new ArrayList<>();
         for (Team team : list) {
-
             String teamId = team.getId();
+
+
             QueryWrapper<UserTeam> teamQueryWrapper = new QueryWrapper<>();
             teamQueryWrapper.eq("team_id", teamId);
             List<UserTeam> userTeams = userTeamService.list(teamQueryWrapper);
-
             TeamUserVo teamUserVo = new TeamUserVo();
             BeanUtils.copyProperties(team, teamUserVo);
-
             if (!CollectionUtils.isEmpty(userTeams)) {
                 for (UserTeam userTeam : userTeams) {
                     String userId = userTeam.getUserId();
@@ -229,7 +258,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                         BeanUtils.copyProperties(userById, userVo);
                         teamUserVo.getUserVo().add(userVo);
                     }
-
                 }
             }
             teamUserVos.add(teamUserVo);
@@ -253,6 +281,33 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
         return teamUserVos;
     }
+    /**
+     * 查看用户加入的队伍
+     * @param request 1
+     * @return 200
+     */
+    @Override
+    public List<TeamUserVo> getJoinTeamList(HttpServletRequest request) {
+        if (request == null) {
+            throw new GlobalException(ErrorCode.NO_LOGIN);
+        }
+        User user = UserUtils.getLoginUser(request);
+        String userId = user.getId();
+        QueryWrapper<UserTeam> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId);
+        List<UserTeam> list = userTeamService.list(wrapper);
+        ArrayList<TeamUserVo> userVos = new ArrayList<>();
+        list.forEach(userTeam -> {
+            String teamId = userTeam.getTeamId();
+            Team team = this.getById(teamId);
+            TeamUserVo teamUserVo = new TeamUserVo();
+            BeanUtils.copyProperties(userTeam, teamUserVo);
+            teamUserVo.setDescription(team.getDescription());
+            teamUserVo.setUserId(team.getUserId());
+            userVos.add(teamUserVo);
+        });
+        return userVos;
+    }
 
     /**
      * 加入队伍
@@ -262,6 +317,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
      * @return v
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean addUserTeam(TeamJoinRequest teamJoinRequest, HttpServletRequest request) {
         RLock lock = redissonClient.getLock("user::team::addUserTeam");
         try {

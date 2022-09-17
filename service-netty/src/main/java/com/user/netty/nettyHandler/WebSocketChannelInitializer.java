@@ -38,7 +38,7 @@ public class WebSocketChannelInitializer extends ChannelInitializer<SocketChanne
         // 1. 读空闲超时(超过一定事件会发送对应的事件)
         // 2. 写空闲超时
         // 3. 读写空闲超时
-        pipeline.addLast(new IdleStateHandler(6, 8, 20));
+        pipeline.addLast(new IdleStateHandler(12, 15, 20));
         pipeline.addLast(new HearBeatHandler());
         // 添加自定义的handler
         pipeline.addLast(new ChatHandler());

@@ -31,6 +31,10 @@ spring:
           uri: lb://user-partner
           predicates:
             - Path=/partner/**
+        - id: user-oss
+          uri: lb://user-oss
+          predicates:
+            - Path=/oss/**
     nacos:
       discovery:
         server-addr: localhost:8848

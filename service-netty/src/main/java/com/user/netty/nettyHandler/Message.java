@@ -1,7 +1,7 @@
 package com.user.netty.nettyHandler;
 
 
-import com.user.model.domain.ChatRecord;
+import com.user.model.domain.vo.ChatRecordVo;
 import lombok.Data;
 
 /**
@@ -11,6 +11,6 @@ import lombok.Data;
 @Data
 public class Message {
     private Integer type;// 消息的类型
-    private ChatRecord chatRecord;//聊天的消息
+    private ChatRecordVo chatRecord;//聊天的消息
     private Object ext; // 扩展
 }
