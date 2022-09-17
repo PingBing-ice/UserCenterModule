@@ -7,6 +7,7 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.user.model.constant.RedisKey;
 import com.user.model.domain.User;
 import com.user.oss.service.OssService;
+import com.user.oss.util.ConstantPropertiesUtils;
 import com.user.rabbitmq.config.mq.MqClient;
 import com.user.rabbitmq.config.mq.RabbitService;
 import com.user.util.common.ErrorCode;
@@ -57,12 +58,12 @@ public class OssServiceImpl implements OssService {
                     throw new GlobalException(ErrorCode.PARAMS_ERROR, "今日上限...");
                 }
                 // Endpoint以华东1（杭州）为例，其它Region请按实际情况填写。
-                String endpoint = "oss-cn-hangzhou.aliyuncs.com";
+                String endpoint = ConstantPropertiesUtils.END_POINT;
                 // 阿里云账号AccessKey拥有所有API的访问权限，风险很高。强烈建议您创建并使用RAM用户进行API访问或日常运维，请登录RAM控制台创建RAM用户。
-                String accessKeyId = "LTAI5tANtaA1KTAdsZr9b3Ai";
-                String accessKeySecret = "lBIkbIJb94EcknMRIlFvRL9YkGIdSV";
+                String accessKeyId = ConstantPropertiesUtils.ACCESS_KEY_ID;
+                String accessKeySecret = ConstantPropertiesUtils.ACCESS_KEY_SECRET;
                 // 填写Bucket名称，例如examplebucket。
-                String bucketName = "bing-edu";
+                String bucketName = ConstantPropertiesUtils.BUCKET_NAME;
                 // 填写Object完整路径，例如exampledir/exampleobject.txt。Object完整路径中不能包含Bucket名称。
                 // 填写Object完整路径，完整路径中不能包含Bucket名称，例如exampledir/exampleobject.txt。
                 // 返回客服端的原始名字
