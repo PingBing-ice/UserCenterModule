@@ -7,6 +7,7 @@ import com.user.model.dto.TeamQuery;
 import com.user.model.request.TeamAddRequest;
 import com.user.model.request.TeamJoinRequest;
 import com.user.model.request.TeamUpdateRequest;
+import com.user.model.request.UserTeamQuitRequest;
 import com.user.partner.service.TeamService;
 import com.user.util.common.B;
 import com.user.util.common.ErrorCode;
@@ -53,6 +54,12 @@ public class TeamController {
         return B.ok(userID);
     }
 
+    /**
+     * 删除队伍
+     * @param teamId
+     * @param request
+     * @return
+     */
     @PostMapping("/delete")
     public B<Boolean> deleteTeamById(@RequestBody long teamId,HttpServletRequest request) {
         if (teamId <= 0) {
@@ -143,4 +150,22 @@ public class TeamController {
         return B.ok();
     }
 
+    /**
+     * 队伍队长 退队员
+     * @param request 队伍id
+     * @return b
+     */
+    @PostMapping("/quitUserTeam")
+    public B<Boolean> quitTeamByUser(@RequestBody UserTeamQuitRequest userTeamQuitRequest, HttpServletRequest request) {
+        if (userTeamQuitRequest == null){
+            throw new GlobalException(ErrorCode.NULL_ERROR);
+        }
+        String teamId = userTeamQuitRequest.getTeamId();
+        String userId = userTeamQuitRequest.getUserId();
+        boolean isQuit = teamService.quitTeamByUser(teamId, userId, request);
+        if (isQuit) {
+            return B.ok();
+        }
+        return B.error(ErrorCode.PARAMS_ERROR,"删除失败");
+    }
 }

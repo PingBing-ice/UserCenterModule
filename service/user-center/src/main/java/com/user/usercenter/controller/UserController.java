@@ -50,10 +50,7 @@ public class UserController {
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
-    @GetMapping("/test")
-    public B<String> test() {
-        return B.ok("请求成功");
-    }
+
 
 
     // 用户注册

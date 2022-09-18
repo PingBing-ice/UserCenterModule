@@ -16,5 +16,11 @@ import java.util.List;
  */
 public interface ITeamChatRecordService extends IService<TeamChatRecord> {
 
+    /**
+     * 根据team id 删除队伍的聊天信息
+     * @param teamId
+     * @return
+     */
+    boolean deleteTeamChatRecordByTeamId(String teamId);
     List<TeamChatRecord> getTeamChatRecordByTeamId(HttpServletRequest request, String teamId);
 }

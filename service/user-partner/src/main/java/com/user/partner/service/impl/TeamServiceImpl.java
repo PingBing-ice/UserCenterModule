@@ -14,6 +14,7 @@ import com.user.model.request.TeamJoinRequest;
 import com.user.model.request.TeamUpdateRequest;
 import com.user.openfeign.UserOpenFeign;
 import com.user.partner.mapper.TeamMapper;
+import com.user.partner.service.ITeamChatRecordService;
 import com.user.partner.service.TeamService;
 import com.user.partner.service.UserTeamService;
 import com.user.util.common.ErrorCode;
@@ -54,6 +55,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     @Resource
     private UserOpenFeign userOpenFeign;
+    @Autowired
+    private ITeamChatRecordService chatRecordService;
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
@@ -190,7 +193,15 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
         QueryWrapper<Team> teamQueryWrapper = new QueryWrapper<>();
         teamQueryWrapper.eq("user_id", userId).and(wrapper -> wrapper.eq("id", teamId));
-        return this.remove(teamQueryWrapper);
+        boolean b = this.remove(teamQueryWrapper);
+        if (b) {
+            boolean record = chatRecordService.deleteTeamChatRecordByTeamId(teamId);
+            if (!record) {
+                throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "删除失败...");
+            }
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -454,7 +465,13 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         // 队伍只剩一人
 
         if (teamHasJoinName == 1) {
-            this.removeById(teamId);
+            boolean removeById = this.removeById(teamId);
+            if (removeById) {
+                boolean record = chatRecordService.deleteTeamChatRecordByTeamId(teamId);
+                if (!record) {
+                    throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "删除错误");
+                }
+            }
         } else {
             if (userId.equals(team.getUserId())) {
                 // 队长 退出
@@ -492,6 +509,35 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         wrapper.eq("team_id", teamId);
         return userTeamService.count(wrapper);
 
+    }
+
+    @Override
+    public boolean quitTeamByUser(String teamId, String userId, HttpServletRequest request) {
+        if (!StringUtils.hasText(teamId)&&!StringUtils.hasText(userId)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR,"数据为空...");
+        }
+        User loginUser = UserUtils.getLoginUser(request);
+        String loginUserId = loginUser.getId();
+        Team team = baseMapper.selectById(teamId);
+        if (team == null) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍不存在");
+        }
+        String teamUserId = team.getUserId();
+        if (!StringUtils.hasText(teamUserId)) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍不存在");
+        }
+        if (!loginUserId.equals(teamUserId)) {
+            throw new GlobalException(ErrorCode.NO_AUTH,"权限不足...");
+        }
+        QueryWrapper<UserTeam> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId);
+        wrapper.eq("team_id", teamId);
+        UserTeam userTeam = userTeamService.getOne(wrapper);
+        if (userTeam == null) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "人员不在队伍中....");
+        }
+
+        return userTeamService.removeById(userTeam);
     }
 }
 

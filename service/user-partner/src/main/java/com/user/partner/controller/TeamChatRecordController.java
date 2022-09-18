@@ -29,7 +29,7 @@ public class TeamChatRecordController {
 
 
     /**
-     * 根据teamId 查新队伍聊天信息
+     * 根据teamId 查看队伍聊天信息
      * @param teamId
      * @param request
      * @return

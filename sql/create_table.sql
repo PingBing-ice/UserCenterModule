@@ -57,32 +57,32 @@ create table chat_record
 
 create table team
 (
-    id           bigint                             not null comment 'id'
+    id          bigint                               not null comment 'id'
         primary key,
-    name     varchar(256)                       null comment '队伍的名称',
-    user_id bigint                       null comment '用户id',
-    description   varchar(1024)                      null comment '描述',
-    max_num       bigint(20)                      default 1 not null comment '最大人数',
-    password     varchar(32)                        null comment '密码',
-    status          varchar(256)                       null comment '状态',
-    expire_time        datetime                      null comment '创建队伍的时间',
-    is_delete    tinyint  default 0                 not null comment '是否删除',
-    create_time  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_time  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
+    name        varchar(256)                         null comment '队伍的名称',
+    user_id     bigint                               null comment '用户id',
+    description varchar(1024)                        null comment '描述',
+    max_num     bigint(20) default 1                 not null comment '最大人数',
+    password    varchar(32)                          null comment '密码',
+    status      varchar(256)                         null comment '状态',
+    expire_time datetime                             null comment '创建队伍的时间',
+    is_delete   tinyint    default 0                 not null comment '是否删除',
+    create_time datetime   default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time datetime   default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
 )
     comment '队伍表';
 
 create table user_team
 (
-    id           bigint                             not null comment 'id'
+    id          bigint                             not null comment 'id'
         primary key,
-    name     varchar(256)                       null comment '队伍的名称',
-    user_id bigint                       null comment '用户id',
-    team_id   bigint                      null comment '队伍id',
-    join_time  datetime                      null comment '加入队伍时间',
-    is_delete    tinyint  default 0                 not null comment '是否删除',
-    create_time  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_time  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
+    name        varchar(256)                       null comment '队伍的名称',
+    user_id     bigint                             null comment '用户id',
+    team_id     bigint                             null comment '队伍id',
+    join_time   datetime                           null comment '加入队伍时间',
+    is_delete   tinyint  default 0                 not null comment '是否删除',
+    create_time datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
 )
     comment '队伍表';
 
@@ -91,7 +91,7 @@ create table team_chat_record
     id          varchar(255)                       not null
         primary key,
     user_id     varchar(255)                       null comment '用户id',
-    team_id   varchar(255)                       null comment '队伍id',
+    team_id     varchar(255)                       null comment '队伍id',
     message     varchar(1024)                      null comment '消息',
     has_read    int(1)   default 0                 null comment '是否已读 0 未读',
     create_time datetime default CURRENT_TIMESTAMP not null,
@@ -105,19 +105,30 @@ create table read_team_chat
     id          varchar(255)                       not null
         primary key,
     user_id     varchar(255)                       null comment '用户id',
-    team_id   varchar(255)                       null comment '队伍id',
-    has_read    int   default 0                 null comment '未读的信息条数',
+    team_id     varchar(255)                       null comment '队伍id',
+    has_read    int      default 0                 null comment '未读的信息条数',
     create_time datetime default CURRENT_TIMESTAMP not null,
     is_delete   tinyint  default 0                 not null comment '是否删除'
 
 )
     comment '队伍聊天记录表';
 
-create table `user_label`(
-    id varchar(22) not null primary key ,
-    label_type varchar(255)  null comment '标签类型',
-    label varchar(255) null  comment '标签',
-    is_delete    tinyint  default 0                 not null comment '是否删除',
-    create_time  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_time  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
-)comment '标签表';
+create table `user_label`
+(
+    id          varchar(22)                        not null primary key,
+    label_type  varchar(255)                       null comment '标签类型',
+    label       varchar(255)                       null comment '标签',
+    is_delete   tinyint  default 0                 not null comment '是否删除',
+    create_time datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
+) comment '标签表';
+
+create table `user_notice`
+(
+    id          varchar(22)                        not null primary key,
+    notice  text(1255)                       null comment '发布的公告',
+    region       tinyint                       null comment '发布的位置',
+    is_delete   tinyint  default 0                 not null comment '是否删除',
+    create_time datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
+) comment '公告表';

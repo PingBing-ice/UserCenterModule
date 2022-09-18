@@ -22,11 +22,11 @@ public class GlobalExceptionHeader {
     @ExceptionHandler({GlobalException.class})
     public B<ErrorCode> businessExceptionHeader(GlobalException e) {
         log.info(e.getMessage(),e.getCode(),e.getDescription(),e);
-        return B.error(ErrorCode.PARAMS_ERROR);
+        return B.error(e.getCode(),e.getMessage(),e.getDescription());
     }
     @ExceptionHandler({RuntimeException.class,Exception.class})
     public B<ErrorCode> runExceptionHeader(Exception e) {
         log.info("runException",e);
-        return B.error(ErrorCode.SYSTEM_EXCEPTION);
+        return B.error(ErrorCode.SYSTEM_EXCEPTION.getCode(),ErrorCode.SYSTEM_EXCEPTION.getMessage(),"");
     }
 }

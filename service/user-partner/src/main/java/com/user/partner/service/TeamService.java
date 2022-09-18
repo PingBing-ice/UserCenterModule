@@ -80,4 +80,6 @@ public interface TeamService extends IService<Team> {
      * @return
      */
     TeamUserVo getByTeamId(String id);
+
+    boolean quitTeamByUser(String teamId, String userId, HttpServletRequest request);
 }

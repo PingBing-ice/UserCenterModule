@@ -43,8 +43,6 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
         Message mess = gson.fromJson(message, Message.class);
         log.info(mess+"mess====================");
         RabbitService recordService = SpringUtilObject.getBean(RabbitService.class);
-
-
         switch (mess.getType()) {
             case ChatType.CONNECT:
                 // 建立用户与通道的关联
