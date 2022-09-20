@@ -4,6 +4,7 @@ import com.user.model.domain.User;
 import com.user.oss.service.OssService;
 import com.user.util.common.B;
 import com.user.util.utils.UserUtils;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +29,13 @@ public class OssController {
     public B<String> upFile(MultipartFile file, HttpServletRequest request) {
         User loginUser = UserUtils.getLoginUser(request);
         String url = ossService.upload(file,loginUser);
+        return B.ok(url);
+    }
+
+    @PostMapping("/file/upload/team/{teamID}")
+    public B<String> upFileByTeam(MultipartFile file, HttpServletRequest request, @PathVariable String teamID) {
+        User loginUser = UserUtils.getLoginUser(request);
+        String url = ossService.upFileByTeam(file,loginUser,teamID);
         return B.ok(url);
     }
 }

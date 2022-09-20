@@ -3,6 +3,7 @@ package com.user.usercenter.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.user.model.constant.RedisKey;
+import com.user.model.constant.UserStatus;
 import com.user.model.domain.User;
 import com.user.model.request.UserLoginRequest;
 import com.user.model.request.UserRegisterRequest;
@@ -79,11 +80,14 @@ public class UserController {
     public B<User> getCurrent(HttpServletRequest request) {
         User currentUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
         if (currentUser == null) {
-            throw new GlobalException(ErrorCode.NO_LOGIN, "请先登录!!!!");
+            throw new GlobalException(ErrorCode.NO_LOGIN);
         }
         String id = currentUser.getId();
         // todo 校验用户是否合法
         User user = userService.getById(id);
+        if (user.getUserStatus() == UserStatus.LOCKING) {
+            throw new GlobalException(ErrorCode.NO_AUTH, "该用户以锁定...");
+        }
         // 进行脱敏
         User safetyUser = userService.getSafetyUser(user);
         return B.ok(safetyUser);
@@ -232,5 +236,20 @@ public class UserController {
     public B<List<User>> searchUserTag(@RequestParam("tag")String tag,HttpServletRequest request) {
         List<User> userList = userService.searchUserTag(tag, request);
         return B.ok(userList);
+    }
+
+    /**
+     * 匹配用户
+     * @param num 推荐数量
+     * @param request
+     * @return
+     */
+    @GetMapping("/match")
+    public B<List<User>> matchUsers(long num, HttpServletRequest request) {
+        if (num <= 0 || num > 20) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR,"参数错误...");
+        }
+        List<User> userVos=  userService.matchUsers(num, request);
+        return B.ok(userVos);
     }
 }

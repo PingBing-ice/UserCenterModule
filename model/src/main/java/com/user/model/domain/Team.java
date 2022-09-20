@@ -51,6 +51,10 @@ public class Team implements Serializable {
      * 状态
      */
     private Integer status;
+    /**
+     * 队伍头像
+     */
+    private String avatarUrl;
 
     /**
      * 过期时间

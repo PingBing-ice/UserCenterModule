@@ -23,7 +23,7 @@ public class WebSocketChannelInitializer extends ChannelInitializer<SocketChanne
     // 初始化管道
     // 加载对应的ChannelHandler
     @Override
-    protected void initChannel(SocketChannel ch) throws Exception {
+    protected void initChannel(SocketChannel ch){
         ChannelPipeline pipeline = ch.pipeline();
         // 添加一个http 的编码器
         pipeline.addLast(new HttpServerCodec());
@@ -34,11 +34,13 @@ public class WebSocketChannelInitializer extends ChannelInitializer<SocketChanne
         // 需要指定接收请求的路由
         pipeline.addLast(new WebSocketServerProtocolHandler("/ws"));
 
-        // 添加Netty空闲超时检查
+
+        // 添加Netty空闲超时检查 当触发后会调用下一个handler
         // 1. 读空闲超时(超过一定事件会发送对应的事件)
         // 2. 写空闲超时
         // 3. 读写空闲超时
         pipeline.addLast(new IdleStateHandler(12, 15, 20));
+        // 对空闲检测的handler
         pipeline.addLast(new HearBeatHandler());
         // 添加自定义的handler
         pipeline.addLast(new ChatHandler());

@@ -61,8 +61,8 @@ public class TeamController {
      * @return
      */
     @PostMapping("/delete")
-    public B<Boolean> deleteTeamById(@RequestBody long teamId,HttpServletRequest request) {
-        if (teamId <= 0) {
+    public B<Boolean> deleteTeamById(@RequestBody(required = false) String teamId,HttpServletRequest request) {
+        if (!StringUtils.hasText(teamId)) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
         boolean b = teamService.deleteById(teamId,request);

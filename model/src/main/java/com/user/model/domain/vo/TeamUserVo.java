@@ -30,7 +30,7 @@ public class TeamUserVo implements Serializable {
      */
     private String userId;
 
-
+    private String avatarUrl;
     /**
      * 队伍id
      */

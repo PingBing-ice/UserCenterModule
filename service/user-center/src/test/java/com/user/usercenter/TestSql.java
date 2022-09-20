@@ -1,5 +1,8 @@
 package com.user.usercenter;
 
+import java.io.FileInputStream;
+import java.nio.channels.FileChannel;
+
 /**
  * @author ice
  * @date 2022/6/14 10:57
@@ -26,7 +29,9 @@ public class TestSql {
 //
 //    }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception{
+        FileChannel fileChannel = new FileInputStream("").getChannel();
 
+        int i = Integer.parseInt("1");
     }
 }

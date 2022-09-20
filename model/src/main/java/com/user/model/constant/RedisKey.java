@@ -8,8 +8,13 @@ package com.user.model.constant;
 public interface RedisKey {
     String selectFriend = "selectFriendList::";
     String tagRedisKey = "tagNum::";
-    String ossAvatarRedisKey = "ossAvatar::";
+
+    String ossAvatarUserRedisKey = "ossAvatar:User:";
+    String ossAvatarTeamRedisKey = "ossAvatar:Team:";
+
     String redisIndexKey = "user:recommend";
     String redisAddTeamLock = "user:addTeam:key";
     String redisFileAvatarLock = "user:file:avatar:key";
+    String redisFileByTeamAvatarLock = "user:file:avatar:team:key";
+
 }

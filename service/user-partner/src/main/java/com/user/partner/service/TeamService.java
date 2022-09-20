@@ -33,7 +33,7 @@ public interface TeamService extends IService<Team> {
      * @param request
      * @return
      */
-    boolean deleteById(long id,HttpServletRequest request);
+    boolean deleteById(String id,HttpServletRequest request);
 
     /**
      * 查询队伍列表

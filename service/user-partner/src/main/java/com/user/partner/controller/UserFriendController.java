@@ -53,11 +53,8 @@ public class UserFriendController {
     // 添加好友
     @GetMapping("/friendUser")
     public B<String> friendRequest(@RequestParam(required = false)String toUserId, HttpServletRequest request) {
-        User user = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
-        if (user == null) {
-            throw new GlobalException(ErrorCode.NO_LOGIN, "未登录");
-        }
-        String userId = user.getId();
+        User loginUser = UserUtils.getLoginUser(request);
+        String userId = loginUser.getId();
         int id = friendReqService.sendRequest(userId, toUserId);
         if (id != 1) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "发送失败");
@@ -78,7 +75,7 @@ public class UserFriendController {
         String userId = user.getId();
         List<User> users = friendReqService.checkFriend(userId);
         if (users == null) {
-            return B.error(ErrorCode.NULL_ERROR, "没有用户申请");
+            return B.error(ErrorCode.NULL_ERROR);
         }
         return B.ok(users);
     }

@@ -32,13 +32,14 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     // 用来保存所有的客服端连接
     private static final ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
 
-    // 时间格式器
+    // 时间格式器 如果有需要可以将发送时间 发送的前端的好友
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm");
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame msg) {
         // 当接收到数据后自动调用
         String message = msg.text();
+
         Gson gson = new Gson();
         Message mess = gson.fromJson(message, Message.class);
         log.info(mess+"mess====================");
@@ -55,7 +56,6 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
             case ChatType.FRIEND:
                 // 将聊天消息保存到数据库
                 ChatRecordVo chatRecord = mess.getChatRecord();
-                log.info(chatRecord+"chatRecord=======================================");
                 // 发送消息好友在线,可以直接发送消息给好友
                 Channel channel= UserChannelMap.getFriendChannel(chatRecord.getSendId());
 
@@ -69,7 +69,9 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
                     recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,record);
                     channel.writeAndFlush(new TextWebSocketFrame(gson.toJson(mess)));
                 }else {
+                    // 用户不在线 保存到数据库
                     record.setHasRead(0);
+                    // 调用 Rabbit 保存信息
                     recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,record);
                     // 不在线,暂时不发送
                     log.info("用户 "+chatRecord.getSendId() +"不在线!!!!");
@@ -123,6 +125,14 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
         String channelId = ctx.channel().id().asLongText();
         UserChannelMap.removeByChannelId(channelId);
     }
+
+    // channel 处于活动状态调用
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        log.info("服务器地址 上线了 ~ ====> "+ctx.channel().remoteAddress());
+        super.channelActive(ctx);
+    }
+
     // 用户断开连接调用
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {

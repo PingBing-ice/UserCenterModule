@@ -10,4 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface OssService {
     String upload(MultipartFile file, User loginUser);
+
+    String upFileByTeam(MultipartFile file, User loginUser, String teamID);
 }

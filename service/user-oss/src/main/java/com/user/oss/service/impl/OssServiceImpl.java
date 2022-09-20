@@ -5,7 +5,9 @@ import cn.hutool.core.util.IdUtil;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.user.model.constant.RedisKey;
+import com.user.model.domain.Team;
 import com.user.model.domain.User;
+import com.user.openfeign.TeamOpenFeign;
 import com.user.oss.service.OssService;
 import com.user.oss.util.ConstantPropertiesUtils;
 import com.user.rabbitmq.config.mq.MqClient;
@@ -40,7 +42,11 @@ public class OssServiceImpl implements OssService {
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
+    private TeamOpenFeign teamOpenFeign;
+
+    @Resource
     private RedissonClient redissonClient;
+
     // 头像上传
     @Override
     public String upload(MultipartFile file, User loginUser) {
@@ -52,55 +58,98 @@ public class OssServiceImpl implements OssService {
                 }
                 // 判断用户是否上传过
                 String userId = loginUser.getId();
-                String redisKey = RedisKey.ossAvatarRedisKey + userId;
-                String key = stringRedisTemplate.opsForValue().get(redisKey);
-                if (StringUtils.hasText(key)) {
-                    throw new GlobalException(ErrorCode.PARAMS_ERROR, "今日上限...");
-                }
-                // Endpoint以华东1（杭州）为例，其它Region请按实际情况填写。
-                String endpoint = ConstantPropertiesUtils.END_POINT;
-                // 阿里云账号AccessKey拥有所有API的访问权限，风险很高。强烈建议您创建并使用RAM用户进行API访问或日常运维，请登录RAM控制台创建RAM用户。
-                String accessKeyId = ConstantPropertiesUtils.ACCESS_KEY_ID;
-                String accessKeySecret = ConstantPropertiesUtils.ACCESS_KEY_SECRET;
-                // 填写Bucket名称，例如examplebucket。
-                String bucketName = ConstantPropertiesUtils.BUCKET_NAME;
-                // 填写Object完整路径，例如exampledir/exampleobject.txt。Object完整路径中不能包含Bucket名称。
-                // 填写Object完整路径，完整路径中不能包含Bucket名称，例如exampledir/exampleobject.txt。
-                // 返回客服端的原始名字
-                String originalFilename = IdUtil.simpleUUID()+file.getOriginalFilename();
-                String objectName = "user/"+new DateTime().toString("yyyy/MM/dd") +"/"+originalFilename;
-
-                // 创建OSSClient实例。
-                OSS ossClient = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
-
-                try {
-                    InputStream inputStream = file.getInputStream();
-                    // 创建PutObject请求。
-                    ossClient.putObject(bucketName, objectName, inputStream);
-                    String url ="https://" + bucketName + "." + endpoint + "/" + objectName;
-                    User user = new User();
-                    user.setId(userId);
-                    user.setAvatarUrl(url);
-                    rabbitService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.OSS_KEY,user);
-                    Integer integer = TimeUtils.getRemainSecondsOneDay(new Date());
-                    stringRedisTemplate.opsForValue().set(redisKey,new Date().toString(),integer, TimeUnit.SECONDS);
-                    return url;
-                } catch (Exception oe) {
-                    log.error(oe.getMessage());
-                    throw new GlobalException(ErrorCode.PARAMS_ERROR, "上传失败");
-                } finally {
-                    if (ossClient != null) {
-                        ossClient.shutdown();
-                    }
-                }
+                String redisKey = RedisKey.ossAvatarUserRedisKey + userId;
+                String url = getUrl(redisKey, file);
+                User user = new User();
+                user.setId(userId);
+                user.setAvatarUrl(url);
+                rabbitService.sendMessage(MqClient.NETTY_EXCHANGE, MqClient.OSS_KEY, user);
+                Integer integer = TimeUtils.getRemainSecondsOneDay(new Date());
+                stringRedisTemplate.opsForValue().set(redisKey, new Date().toString(), integer, TimeUnit.SECONDS);
+                return url;
             }
         } catch (InterruptedException e) {
             throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "加锁失败");
-        }finally {
+        } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
         }
         return null;
+    }
+
+    @Override
+    public String upFileByTeam(MultipartFile file, User loginUser, String teamID) {
+        RLock lock = redissonClient.getLock(RedisKey.redisFileByTeamAvatarLock);
+        try {
+            if (lock.tryLock(0, 3000, TimeUnit.MILLISECONDS)) {
+                if (file == null || !StringUtils.hasText(teamID)) {
+                    throw new GlobalException(ErrorCode.NULL_ERROR);
+                }
+                String userId = loginUser.getId();
+                Team team = teamOpenFeign.getTeamByTeamUser(teamID, userId);
+                if (team == null) {
+                    throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍不存在...");
+                }
+                String teamUserId = team.getUserId();
+                if (!userId.equals(teamUserId)) {
+                    throw new GlobalException(ErrorCode.NO_AUTH, "权限不足...");
+                }
+                String redisKey = RedisKey.ossAvatarTeamRedisKey + teamID;
+                String url = getUrl(redisKey, file);
+                team.setAvatarUrl(url);
+                boolean teamByTeam = teamOpenFeign.updateTeamByTeam(team);
+                if (!teamByTeam) {
+                    throw new GlobalException(ErrorCode.PARAMS_ERROR, "上传错误...");
+                }
+                Integer integer = TimeUtils.getRemainSecondsOneDay(new Date());
+                stringRedisTemplate.opsForValue().set(redisKey, new Date().toString(), integer, TimeUnit.SECONDS);
+                return url;
+            }
+        } catch (InterruptedException e) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "加锁失败");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+
+        return null;
+    }
+
+    public String getUrl(String redisKey, MultipartFile file) {
+        String key = stringRedisTemplate.opsForValue().get(redisKey);
+        if (StringUtils.hasText(key)) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "今日上限...");
+        }
+        // Endpoint以华东1（杭州）为例，其它Region请按实际情况填写。
+        String endpoint = ConstantPropertiesUtils.END_POINT;
+        // 阿里云账号AccessKey拥有所有API的访问权限，风险很高。强烈建议您创建并使用RAM用户进行API访问或日常运维，请登录RAM控制台创建RAM用户。
+        String accessKeyId = ConstantPropertiesUtils.ACCESS_KEY_ID;
+        String accessKeySecret = ConstantPropertiesUtils.ACCESS_KEY_SECRET;
+        // 填写Bucket名称，例如examplebucket。
+        String bucketName = ConstantPropertiesUtils.BUCKET_NAME;
+        // 填写Object完整路径，例如exampledir/exampleobject.txt。Object完整路径中不能包含Bucket名称。
+        // 填写Object完整路径，完整路径中不能包含Bucket名称，例如exampledir/exampleobject.txt。
+        // 返回客服端的原始名字
+        String originalFilename = IdUtil.simpleUUID() + file.getOriginalFilename();
+        String objectName = "user/" + new DateTime().toString("yyyy/MM/dd") + "/" + originalFilename;
+
+        // 创建OSSClient实例。
+        OSS ossClient = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
+
+        try {
+            InputStream inputStream = file.getInputStream();
+            // 创建PutObject请求。
+            ossClient.putObject(bucketName, objectName, inputStream);
+            return "https://" + bucketName + "." + endpoint + "/" + objectName;
+        } catch (Exception oe) {
+            log.error(oe.getMessage());
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "上传失败");
+        } finally {
+            if (ossClient != null) {
+                ossClient.shutdown();
+            }
+        }
     }
 }

@@ -25,6 +25,7 @@ public class MyLogGetWayFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
+
         URI URIPath = request.getURI();
         String path = request.getPath().value();
         String method = request.getMethodValue();

@@ -10,12 +10,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.user.model.constant.RedisKey;
+import com.user.model.constant.UserStatus;
 import com.user.model.domain.User;
 import com.user.model.request.UserRegisterRequest;
 import com.user.usercenter.mapper.UserMapper;
 import com.user.usercenter.service.IUserService;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
+import com.user.util.utils.AlgorithmUtils;
 import com.user.util.utils.MD5;
 import com.user.util.utils.TimeUtils;
 import com.user.util.utils.UserUtils;
@@ -149,7 +151,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         // 用户脱敏
-
+        if (user.getUserStatus().equals(UserStatus.LOCKING)) {
+             throw new GlobalException(ErrorCode.NO_AUTH, "该用户以锁定...");
+        }
         User cleanUser = getSafetyUser(user);
         // 记录用户的登录态
         HttpSession session = request.getSession();
@@ -426,5 +430,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         List<User> list = commentPage.getRecords();
         list.parallelStream().forEach(this::getSafetyUser);
         return list;
+    }
+
+    @Override
+    public List<User> matchUsers(long num, HttpServletRequest request) {
+        User loginUser = UserUtils.getLoginUser(request);
+        String tags = loginUser.getTags();
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {
+        }.getType());
+        SortedMap<Integer, User> indexDistanceMap = new TreeMap<>();
+        List<User> userList = this.list();
+        for (User user : userList) {
+            String userTags = user.getTags();
+            if (!StringUtils.hasText(userTags) || tags.equals(userTags)) {
+                continue;
+            }
+            List<String> tagUserList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            }.getType());
+            int distance = AlgorithmUtils.minDistance(tagList, tagUserList);
+            indexDistanceMap.put(distance, user);
+        }
+        System.out.println(indexDistanceMap);
+        return indexDistanceMap.keySet().stream().map(indexDistanceMap::get).limit(num).collect(Collectors.toList());
     }
 }

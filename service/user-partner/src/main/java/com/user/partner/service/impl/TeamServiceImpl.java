@@ -133,6 +133,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 //        插入队伍信息到队伍表
                 team.setId(null);
                 team.setUserId(userId);
+                team.setAvatarUrl("https://pic1.zhimg.com/80/v2-88c46f9f5b2aa6d6e04469fb989b7b54_720w.jpg");
                 boolean save = this.save(team);
                 String teamId = team.getId();
                 if (!save || !StringUtils.hasText(teamId)) {
@@ -170,7 +171,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteById(long id, HttpServletRequest request) {
+    public boolean deleteById(String id, HttpServletRequest request) {
         User loginUser = UserUtils.getLoginUser(request);
         String userId = loginUser.getId();
         if (!StringUtils.hasText(userId)) {
@@ -463,7 +464,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
         long teamHasJoinName = this.countUserTeamByTeamId(teamId);
         // 队伍只剩一人
-
         if (teamHasJoinName == 1) {
             boolean removeById = this.removeById(teamId);
             if (removeById) {

@@ -96,4 +96,6 @@ public interface IUserService extends IService<User> {
      * @return
      */
     List<User> searchUserTag(String tag, HttpServletRequest request);
+
+    List<User> matchUsers(long num, HttpServletRequest request);
 }

@@ -1,13 +1,12 @@
 package com.user.partner.teamfeign;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.user.model.domain.Team;
 import com.user.model.domain.UserTeam;
+import com.user.partner.service.TeamService;
 import com.user.partner.service.UserTeamService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +22,9 @@ public class UserTeamOpenFeign {
     @Autowired
     private UserTeamService userTeamService;
 
+    @Autowired
+    private TeamService teamService;
+
     @GetMapping("/getUserTeamListById")
     public List<String> getUserTeamListById(@RequestParam("teamId") String teamId,@RequestParam("userId")String userId) {
         QueryWrapper<UserTeam> wrapper = new QueryWrapper<>();
@@ -36,5 +38,20 @@ public class UserTeamOpenFeign {
             }
         });
         return teamIdList;
+    }
+    @GetMapping("/getTeamByUserId")
+    public Team getTeamByTeamUser(@RequestParam("teamId") String teamId,@RequestParam("userId")String userId) {
+        QueryWrapper<Team> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId);
+        wrapper.eq("team_id", teamId);
+        return teamService.getOne(wrapper);
+    }
+
+    @PostMapping("/updateTeamByTeam")
+    public boolean updateTeamByTeam(@RequestBody Team team) {
+        if (team == null) {
+            return false;
+        }
+        return teamService.updateById(team);
     }
 }

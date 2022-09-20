@@ -15,6 +15,7 @@ import com.user.util.exception.GlobalException;
 import com.user.util.utils.UserUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,13 @@ public class UserFriendReqServiceImpl extends ServiceImpl<UserFriendReqMapper, U
 
     @Override
     public int sendRequest(String userId, String toUserId) {
+
+        if (!StringUtils.hasText(userId) || !StringUtils.hasText(toUserId)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR,"数据为空,请重试...");
+        }
+        if (userId.equals(toUserId)) {
+            throw new GlobalException(ErrorCode.ERROR,"无法添加自己...");
+        }
         QueryWrapper<UserFriend> friendQueryWrapper = new QueryWrapper<>();
         friendQueryWrapper.eq("user_id", userId).and(w -> w.eq("friends_id", toUserId))
                 .or().eq("user_id", toUserId).and(w -> w.eq("friends_id", userId));
