@@ -41,7 +41,7 @@ public class UserChannelMap {
         for (String s : userChannelMap.keySet()) {
             Channel channel = userChannelMap.get(s);
             if (channel.id().asLongText().equals(channelId)) {
-                log.error("用户Id移除连接: " + s);
+//                log.error("用户Id移除连接: " + s);
                 userChannelMap.remove(s);
                 break;
             }

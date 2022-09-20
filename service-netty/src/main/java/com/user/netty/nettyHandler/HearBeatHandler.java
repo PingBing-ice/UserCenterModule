@@ -21,18 +21,18 @@ public class HearBeatHandler extends ChannelInboundHandlerAdapter {
             IdleStateEvent idleStateEvent = (IdleStateEvent)evt;
 
             if(idleStateEvent.state() == IdleState.READER_IDLE) {
-                log.info("读空闲事件触发...");
+//                log.info("读空闲事件触发...");
             }
             else if(idleStateEvent.state() == IdleState.WRITER_IDLE) {
-                log.info("写空闲事件触发...");
+//                log.info("写空闲事件触发...");
             }
             else if(idleStateEvent.state() == IdleState.ALL_IDLE) {
-                log.info("读写空闲事件触发...");
+//                log.info("读写空闲事件触发...");
                 Channel channel = ctx.channel();
                 String channelId = channel.id().asLongText();
                 UserChannelMap.removeByChannelId(channelId);
                 channel.close();
-                log.info("关闭通道 {} 资源",channelId);
+//                log.info("关闭通道 {} 资源",channelId);
                 
             }
         }

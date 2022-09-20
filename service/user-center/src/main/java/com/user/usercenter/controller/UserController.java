@@ -83,7 +83,6 @@ public class UserController {
             throw new GlobalException(ErrorCode.NO_LOGIN);
         }
         String id = currentUser.getId();
-        // todo 校验用户是否合法
         User user = userService.getById(id);
         if (user.getUserStatus() == UserStatus.LOCKING) {
             throw new GlobalException(ErrorCode.NO_AUTH, "该用户以锁定...");

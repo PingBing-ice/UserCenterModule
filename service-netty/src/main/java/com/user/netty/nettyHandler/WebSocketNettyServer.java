@@ -1,6 +1,7 @@
 package com.user.netty.nettyHandler;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import lombok.extern.log4j.Log4j2;
@@ -36,7 +37,9 @@ public class WebSocketNettyServer {
                 group(mainGroup, subGroup)
                 // 指定Netty 通道类型
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new WebSocketChannelInitializer());
+                .option(ChannelOption.SO_BACKLOG, 128) // 设置线程队列得到的连接个数
+                .childOption(ChannelOption.SO_KEEPALIVE,true) // 设置保持活动的连接状态
+                .childHandler(new WebSocketChannelInitializer());// 初始化handler
     }
     /**
      * public static void main(String[] args) {

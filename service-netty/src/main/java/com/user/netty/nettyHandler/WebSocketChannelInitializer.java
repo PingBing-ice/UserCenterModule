@@ -34,7 +34,6 @@ public class WebSocketChannelInitializer extends ChannelInitializer<SocketChanne
         // 需要指定接收请求的路由
         pipeline.addLast(new WebSocketServerProtocolHandler("/ws"));
 
-
         // 添加Netty空闲超时检查 当触发后会调用下一个handler
         // 1. 读空闲超时(超过一定事件会发送对应的事件)
         // 2. 写空闲超时

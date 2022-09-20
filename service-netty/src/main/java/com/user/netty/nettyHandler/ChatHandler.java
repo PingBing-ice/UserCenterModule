@@ -39,17 +39,16 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame msg) {
         // 当接收到数据后自动调用
         String message = msg.text();
-
         Gson gson = new Gson();
         Message mess = gson.fromJson(message, Message.class);
-        log.info(mess+"mess====================");
+//        log.info(mess+"mess====================");
         RabbitService recordService = SpringUtilObject.getBean(RabbitService.class);
         switch (mess.getType()) {
             case ChatType.CONNECT:
                 // 建立用户与通道的关联
                 String userId = mess.getChatRecord().getUserId();
                 UserChannelMap.put(userId, ctx.channel());
-                log.info("建立用户 :" + userId + "与通道的关联: " + ctx.channel().id().asLongText());
+//                log.info("建立用户 :" + userId + "与通道的关联: " + ctx.channel().id().asLongText());
                 UserChannelMap.print();
                 break;
             // 处理客服端发送消息
@@ -100,7 +99,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
                 }
                 break;
             case ChatType.HEARTBEAT:
-                log.info("接收心跳消息: "+ message);
+//                log.info("接收心跳消息: "+ message);
                 break;
 
 
@@ -112,14 +111,14 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     // 新的客服端连接时调用
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) {
-        log.info("创建连接{}",ctx.channel().id().asLongText());
+//        log.info("创建连接{}",ctx.channel().id().asLongText());
         channels.add(ctx.channel());
     }
 
     // 出现异常时调用
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        log.error("出现异常,关闭连接");
+//        log.error("出现异常,关闭连接");
         cause.printStackTrace();
         // 通道 出现异常 移除该通道
         String channelId = ctx.channel().id().asLongText();
@@ -129,7 +128,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     // channel 处于活动状态调用
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        log.info("服务器地址 上线了 ~ ====> "+ctx.channel().remoteAddress());
+//        log.info("服务器地址 上线了 ~ ====> "+ctx.channel().remoteAddress());
         super.channelActive(ctx);
     }
 
@@ -137,7 +136,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
         // 通道断开连接时 移除该通道
-        log.error("关闭连接 {}",ctx.channel().id().asLongText());
+//        log.error("关闭连接 {}",ctx.channel().id().asLongText());
         String channelId = ctx.channel().id().asLongText();
         UserChannelMap.removeByChannelId(channelId);
     }
