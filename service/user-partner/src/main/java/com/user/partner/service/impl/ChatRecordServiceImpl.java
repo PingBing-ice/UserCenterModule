@@ -36,7 +36,7 @@ public class ChatRecordServiceImpl extends ServiceImpl<ChatRecordMapper, ChatRec
         baseMapper.update(chatRecord, wrapper);
         List<ChatRecord> chatRecords = baseMapper.selectList(wrapper);
         if (chatRecords.size() <= 0) {
-            throw new RuntimeException("查无记录");
+            return null;
         }
         return chatRecords;
     }

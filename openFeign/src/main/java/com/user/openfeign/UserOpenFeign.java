@@ -21,4 +21,7 @@ public interface UserOpenFeign {
 
     @GetMapping("/api/user/feign/getUserById")
     User getUserById(@RequestParam("id") String id);
+
+    @GetMapping("/api/user/feign/seeUserEmail")
+    boolean seeUserEmail(@RequestParam("email") String email);
 }

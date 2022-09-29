@@ -24,16 +24,28 @@ public class ConstantPropertiesUtils implements InitializingBean {
 
     @Value("${aliyun.oss.file.bucketname}")
     private String bucketName;
+
+    @Value(("${email.fromEmail}"))
+    private String email;
+
+    @Value(("${email.password}"))
+    private String emailPassword;
+
     // 服务器地址
     public static String END_POINT;
     public static String ACCESS_KEY_ID;
     public static String ACCESS_KEY_SECRET;
     public static String BUCKET_NAME;
+    // 邮箱地址
+    public static String EMAIL;
+    public static String EMAILPASSWORD;
     @Override
     public void afterPropertiesSet() throws Exception {
         END_POINT = endpoint;
         ACCESS_KEY_ID = keyId;
         ACCESS_KEY_SECRET = keySecret;
         BUCKET_NAME = bucketName;
+        EMAIL = email;
+        EMAILPASSWORD = emailPassword;
     }
 }

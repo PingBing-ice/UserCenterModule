@@ -12,7 +12,7 @@ import com.user.usercenter.service.IUserService;
 import com.user.util.common.B;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
-import com.user.util.utils.ThreadUtil;
+import com.user.util.utils.TimeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -21,14 +21,16 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
+ * 缓存一致性 可以使用 Canal Java => https://blog.csdn.net/a56546/article/details/125170510
+ * 数据库分库分表 读写分离 Mycat => https://blog.csdn.net/K_520_W/article/details/123702217
  * <p>
  * 用户表 前端控制器
  * </p>
@@ -38,7 +40,6 @@ import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
  */
 @RestController
 @RequestMapping("/user")
-//@CrossOrigin(origins = {"http://localhost:7777","http://127.0.0.1:7777"}, allowCredentials = "true")
 @SuppressWarnings("all")
 @Slf4j
 public class UserController {
@@ -52,8 +53,6 @@ public class UserController {
     private RedisTemplate<String, Object> redisTemplate;
 
 
-
-
     // 用户注册
     @PostMapping("/Register")
     public B<Long> userRegister(@RequestBody UserRegisterRequest userRegister) {
@@ -62,12 +61,7 @@ public class UserController {
         if (userRegister == null) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
-
         Long aLong = userService.userRegister(userRegister);
-        Boolean hasKey = redisTemplate.hasKey(RedisKey.redisIndexKey);
-        if (hasKey) {
-            redisTemplate.delete(RedisKey.redisIndexKey);
-        }
         return B.ok(aLong);
     }
 
@@ -110,11 +104,12 @@ public class UserController {
 
     // 查询用户
     @GetMapping("/searchUser")
-    public B<Map<String, Object>> searchUser(@RequestParam(required = false) String username,@RequestParam(required = false) Long current, Long size, HttpServletRequest request) {
+    public B<Map<String, Object>> searchUser(@RequestParam(required = false) String username, @RequestParam(required = false) Long current, Long size, HttpServletRequest request) {
         Map<String, Object> user = userService.searchUser(request, username, current, size);
         // 通过stream 流的方式将列表里的每个user进行脱敏
         return B.ok(user);
     }
+
     // 管理员删除用户
     @PostMapping("/delete")
     public B<Boolean> deleteUser(@RequestBody Long id, HttpServletRequest request) {
@@ -131,6 +126,10 @@ public class UserController {
 
     /**
      * 修改用户
+     *
+     * @param user    要修改的数据
+     * @param request
+     * @return
      */
     @PostMapping("/UpdateUser")
     public B<Integer> UpdateUser(User user, HttpServletRequest request) {
@@ -139,11 +138,9 @@ public class UserController {
     }
 
 
-
     /**
      * 用户注销
      */
-    //
     @PostMapping("/Logout")
     public B<Integer> userLogout(HttpServletRequest request) {
         log.info("用户注销");
@@ -155,14 +152,10 @@ public class UserController {
     }
 
 
-    /**
-     * ===================================================================================================
-     * 根据标签的搜索用户
-     */
     @GetMapping("/search/tags")
     public B<List<User>> getSearchUserTag(@RequestParam(required = false) List<String> tagNameList) {
         if (CollectionUtils.isEmpty(tagNameList)) {
-            throw new GlobalException(ErrorCode.PARAMS_ERROR);
+            throw new GlobalException(ErrorCode.NULL_ERROR, "数据为空...");
         }
         List<User> userList = userService.searchUserTag(tagNameList);
         return B.ok(userList);
@@ -193,25 +186,20 @@ public class UserController {
     @GetMapping("/recommend")
     public B<Map<String, Object>> recommendUser(@RequestParam(required = false) long current, long size, HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
-
-        Map<String,Object> userMap = (Map<String,Object>)redisTemplate.opsForValue().get(RedisKey.redisIndexKey);
+        Map<String, Object> userMap = (Map<String, Object>) redisTemplate.opsForValue().get(RedisKey.redisIndexKey);
         if (userMap != null) {
             return B.ok(userMap);
         }
-        Map<String,Object>map = userService.selectPageIndexList(current, size);
-        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            try {
-                redisTemplate.opsForValue().set(RedisKey.redisIndexKey, map, 180, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                log.error("缓存失败!!");
-                log.error(e.getMessage());
-            }
-        }, ThreadUtil.getThreadPool());
-        future.join();
+        Map<String, Object> map = userService.selectPageIndexList(current, size);
+        try {
+            redisTemplate.opsForValue().set(RedisKey.redisIndexKey, map, TimeUtils.getRemainSecondsOneDay(new Date()), TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("缓存失败!!");
+            log.error(e.getMessage());
+        }
         return B.ok(map);
     }
 
-    // ========================================================================================
     // 搜索用户
     @GetMapping("/searchUserName")
     public B<List<User>> searchUserName(@RequestParam(required = false) String friendUserName,
@@ -232,23 +220,24 @@ public class UserController {
      * 根据单个标签搜索
      */
     @GetMapping("/searchUserTag")
-    public B<List<User>> searchUserTag(@RequestParam("tag")String tag,HttpServletRequest request) {
+    public B<List<User>> searchUserTag(@RequestParam("tag") String tag, HttpServletRequest request) {
         List<User> userList = userService.searchUserTag(tag, request);
         return B.ok(userList);
     }
 
     /**
      * 匹配用户
-     * @param num 推荐数量
+     *
+     * @param num     推荐数量
      * @param request
      * @return
      */
     @GetMapping("/match")
     public B<List<User>> matchUsers(long num, HttpServletRequest request) {
         if (num <= 0 || num > 20) {
-            throw new GlobalException(ErrorCode.PARAMS_ERROR,"参数错误...");
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "参数错误...");
         }
-        List<User> userVos=  userService.matchUsers(num, request);
+        List<User> userVos = userService.matchUsers(num, request);
         return B.ok(userVos);
     }
 }

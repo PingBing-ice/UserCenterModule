@@ -33,6 +33,9 @@ public class UserNoticeController {
         QueryWrapper<UserNotice> wrapper = new QueryWrapper<>();
         wrapper.eq("region", region);
         UserNotice notice = noticeService.getOne(wrapper);
+        if (notice == null) {
+            return B.ok(null);
+        }
         return B.ok(notice.getNotice());
     }
 

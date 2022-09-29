@@ -12,11 +12,13 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class ThreadUtil {
-    private static final ExecutorService executor= new ThreadPoolExecutor(60,
-            1000, 5000,
+
+    private static final ExecutorService executor= new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(),
+            Runtime.getRuntime().availableProcessors()+1, 5000,
             TimeUnit.MINUTES, new ArrayBlockingQueue<>(10000));
 
     public static ExecutorService getThreadPool() {
+
         return executor;
     }
 }

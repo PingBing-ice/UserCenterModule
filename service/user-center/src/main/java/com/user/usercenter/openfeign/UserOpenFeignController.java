@@ -1,8 +1,10 @@
 package com.user.usercenter.openfeign;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.user.model.domain.User;
 import com.user.usercenter.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,5 +28,18 @@ public class UserOpenFeignController {
     @GetMapping("/getUserById")
     public User getUserById(@RequestParam("id") String id) {
         return userService.getById(id);
+    }
+
+
+    @GetMapping("/seeUserEmail")
+    public boolean seeUserEmail(@RequestParam("email")String email) {
+        if (StringUtils.hasText(email)) {
+            QueryWrapper<User> wrapper = new QueryWrapper<>();
+            wrapper.eq("email", email);
+            long count = userService.count(wrapper);
+            return count == 1;
+
+        }
+        return false;
     }
 }

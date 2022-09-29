@@ -13,20 +13,21 @@ import com.user.model.constant.RedisKey;
 import com.user.model.constant.UserStatus;
 import com.user.model.domain.User;
 import com.user.model.request.UserRegisterRequest;
+import com.user.rabbitmq.config.mq.MqClient;
+import com.user.rabbitmq.config.mq.RabbitService;
 import com.user.usercenter.mapper.UserMapper;
 import com.user.usercenter.service.IUserService;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
-import com.user.util.utils.AlgorithmUtils;
-import com.user.util.utils.MD5;
-import com.user.util.utils.TimeUtils;
-import com.user.util.utils.UserUtils;
+import com.user.util.utils.*;
+import javafx.util.Pair;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.util.*;
@@ -54,7 +55,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-
+    @Resource
+    private RabbitService rabbitService;
 
     @Override
     public Long userRegister(UserRegisterRequest userRegister) {
@@ -62,6 +64,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String password = userRegister.getPassword();
         String checkPassword = userRegister.getCheckPassword();
         String planetCode = userRegister.getPlanetCode();
+        String code = userRegister.getCode();
+        String email = userRegister.getEmail();
+
+
         if (!StringUtils.hasText(planetCode)) {
             planetCode = RandomUtil.randomInt(10, 10000) + "";
         }
@@ -95,6 +101,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (!password.equals(checkPassword)) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "确认密码错误");
         }
+
+        if (!StringUtils.hasText(email)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "邮箱为空");
+        }
+        pattern = "\\w[-\\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\\.)+[A-Za-z]{2,14}";
+        matcher = Pattern.compile(pattern).matcher(email);
+        if (!matcher.matches()) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "请输入正确邮箱");
+        }
+        if (!StringUtils.hasText(code)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "验证码为空");
+        }
+        String redisCode = redisTemplate.opsForValue().get(RedisKey.redisRegisterCode + email);
+        if (!StringUtils.hasText(redisCode) || !code.equals(redisCode)) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "验证码错误，请重试");
+        }
         // 判断用户是否重复
         QueryWrapper<User> wrapper = new QueryWrapper<>();
         wrapper.eq("user_account", userAccount);
@@ -109,6 +131,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (a > 0) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "注册用户编号重复");
         }
+        wrapper = new QueryWrapper<>();
+        wrapper.eq("email", email);
+        Long count = baseMapper.selectCount(wrapper);
+        if (count > 0) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "注册邮箱重复");
+        }
         // 加密密码
         String passwordMD5 = MD5.getMD5(password);
         User user = new User();
@@ -117,10 +145,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         user.setPlanetCode(planetCode);
         user.setAvatarUrl("https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80");
         user.setUsername(userAccount);
+        user.setEmail(email);
         boolean save = this.save(user);
         if (!save) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "注册用户失败");
         }
+        rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE, MqClient.REMOVE_REDIS_KEY, RedisKey.redisIndexKey);
         return Long.parseLong(user.getId());
     }
 
@@ -152,7 +182,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         // 用户脱敏
         if (user.getUserStatus().equals(UserStatus.LOCKING)) {
-             throw new GlobalException(ErrorCode.NO_AUTH, "该用户以锁定...");
+            throw new GlobalException(ErrorCode.NO_AUTH, "该用户以锁定...");
         }
         User cleanUser = getSafetyUser(user);
         // 记录用户的登录态
@@ -270,11 +300,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public Map<String, Object> selectPageIndexList(long current, long size) {
         QueryWrapper<User> wrapper = new QueryWrapper<>();
+        wrapper.select("avatar_url", "user_account", "id", "tags","profile");
         Page<User> commentPage = baseMapper.selectPage(new Page<>(current, size), wrapper);
         Map<String, Object> map = new HashMap<>();
         List<User> userList = commentPage.getRecords();
-        // 通过stream 流的方式将列表里的每个user进行脱敏
-        userList = userList.parallelStream().peek(this::getSafetyUser).collect(Collectors.toList());
         map.put("items", userList);
         map.put("current", commentPage.getCurrent());
         map.put("pages", commentPage.getPages());
@@ -322,13 +351,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         if (StringUtils.hasText(tags)) {
-            if (!oldUser.getTags().equals(tags)) {
-                return this.TagsUtil(userId, updateUser);
-            }else {
-                throw new GlobalException(ErrorCode.NULL_ERROR,"重复提交...");
+            if (oldUser.getTags().equals(tags)) {
+                throw new GlobalException(ErrorCode.NULL_ERROR, "重复提交...");
             }
+            return this.TagsUtil(userId, updateUser);
         }
-        return baseMapper.updateById(updateUser);
+        int update = baseMapper.updateById(updateUser);
+        if (update > 0) {
+            rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE, MqClient.REMOVE_REDIS_KEY, RedisKey.redisIndexKey);
+        }
+        return update;
 
     }
 
@@ -367,7 +399,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     public int TagsUtil(String userId, User updateUser) {
         String tagKey = RedisKey.tagRedisKey + userId;
-        String tagNum =  redisTemplate.opsForValue().get(tagKey);
+        String tagNum = redisTemplate.opsForValue().get(tagKey);
         if (!StringUtils.hasText(tagNum)) {
             int i = baseMapper.updateById(updateUser);
             if (i <= 0) {
@@ -377,7 +409,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                     TimeUtils.getRemainSecondsOneDay(new Date()), TimeUnit.SECONDS);
             return i;
         }
-        int parseInt = Integer.parseInt(tagNum);
+        int parseInt;
+        try {
+            parseInt= Integer.parseInt(tagNum);
+        } catch (Exception e) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR);
+        }
         if (parseInt > 5) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "今天修改次数以上限...");
         }
@@ -386,10 +423,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "保存失败...");
         }
         redisTemplate.opsForValue().increment(tagKey);
-        Boolean hasKey = redisTemplate.hasKey(RedisKey.redisIndexKey);
-        if (Boolean.TRUE.equals(hasKey)) {
-            redisTemplate.delete(RedisKey.redisIndexKey);
-        }
         return i;
     }
 
@@ -418,6 +451,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return map;
     }
 
+    /**
+     * 搜索用户的标签
+     *
+     * @param tag     标签
+     * @param request 登录的请求
+     * @return 返回标签
+     */
     @Override
     public List<User> searchUserTag(String tag, HttpServletRequest request) {
         if (!StringUtils.hasText(tag)) {
@@ -432,6 +472,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return list;
     }
 
+    /**
+     * 通过编辑距离算法 推荐用户
+     *
+     * @param num     推荐的数量
+     * @param request 登录
+     * @return 返回
+     */
     @Override
     public List<User> matchUsers(long num, HttpServletRequest request) {
         User loginUser = UserUtils.getLoginUser(request);
@@ -439,19 +486,48 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         Gson gson = new Gson();
         List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {
         }.getType());
-        SortedMap<Integer, User> indexDistanceMap = new TreeMap<>();
-        List<User> userList = this.list();
+//        SortedMap<Integer, User> indexDistanceMap = new TreeMap<>();
+        QueryWrapper<User> wrapper = new QueryWrapper<>();
+        wrapper.select("id", "tags");
+        wrapper.isNotNull("tags");
+        List<User> userList = this.list(wrapper);
+        List<Pair<Integer, String>> pairs = new ArrayList<>();
         for (User user : userList) {
             String userTags = user.getTags();
-            if (!StringUtils.hasText(userTags) || tags.equals(userTags)) {
+            if (!StringUtils.hasText(userTags) || user.getId().equals(loginUser.getId())) {
                 continue;
             }
             List<String> tagUserList = gson.fromJson(userTags, new TypeToken<List<String>>() {
             }.getType());
             int distance = AlgorithmUtils.minDistance(tagList, tagUserList);
-            indexDistanceMap.put(distance, user);
+            int size = pairs.size();
+            if (size - 1 >= num) {
+                pairs.sort(Comparator.comparingInt(Pair::getKey));
+                Pair<Integer, String> pair = pairs.get(size - 1);
+                Integer key = pair.getKey();
+                if (distance >= key) {
+                    continue;
+                }
+                pairs.set(size - 1, new Pair<>(distance, user.getId()));
+
+            } else {
+                pairs.add(new Pair<>(distance, user.getId()));
+            }
         }
-        System.out.println(indexDistanceMap);
-        return indexDistanceMap.keySet().stream().map(indexDistanceMap::get).limit(num).collect(Collectors.toList());
+        List<User> findUserList = new ArrayList<>();
+        if (pairs.size() > 0) {
+            List<String> userIds = pairs.stream().map(Pair::getValue).collect(Collectors.toList());
+            List<User> users = this.listByIds(userIds);
+            if (users == null || users.size() <= 0) {
+                return findUserList;
+            }
+            Map<String, List<User>> userListByUserIdMap = users.stream().map(this::getSafetyUser).collect(Collectors.groupingBy(User::getId));
+
+            for (String userId : userIds) {
+                findUserList.add(userListByUserIdMap.get(userId).get(0));
+            }
+        }
+        return findUserList;
+//        return indexDistanceMap.keySet().parallelStream().map(indexDistanceMap::get).limit(num).collect(Collectors.toList());
     }
 }

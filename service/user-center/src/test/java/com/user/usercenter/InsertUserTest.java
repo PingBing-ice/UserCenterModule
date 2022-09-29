@@ -74,7 +74,7 @@ public class InsertUserTest {
                 j++;
                 User user = new User();
                 user.setUsername("假用户" + i);
-                user.setUserAccount("假ice");
+                user.setUserAccount("假ice"+i);
                 user.setGender("男");
                 user.setPassword("12345678");
                 user.setTags("[\"java\"]");
@@ -82,7 +82,7 @@ public class InsertUserTest {
                 user.setAvatarUrl("https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80");
                 user.setTel("110");
                 user.setEmail("111@qq.com");
-                user.setPlanetCode("1111");
+                user.setPlanetCode("1111"+i);
 
 //            userMapper.insert(user);
                 list.add(user);
@@ -92,7 +92,6 @@ public class InsertUserTest {
             }
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 userService.saveBatch(list, 1000);
-                System.out.println("threadName :" + Thread.currentThread().getName());
             }, ThreadUtil.getThreadPool());
 
             futureList.add(future);

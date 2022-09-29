@@ -17,4 +17,6 @@ public class UserRegisterRequest implements Serializable {
     private String password;
     private String checkPassword;
     private String planetCode;
+    private String email;
+    private String code;
 }

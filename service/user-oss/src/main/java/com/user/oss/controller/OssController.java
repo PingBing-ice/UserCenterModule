@@ -2,12 +2,10 @@ package com.user.oss.controller;
 
 import com.user.model.domain.User;
 import com.user.oss.service.OssService;
+import com.user.oss.util.ResponseEmail;
 import com.user.util.common.B;
 import com.user.util.utils.UserUtils;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
@@ -37,5 +35,16 @@ public class OssController {
         User loginUser = UserUtils.getLoginUser(request);
         String url = ossService.upFileByTeam(file,loginUser,teamID);
         return B.ok(url);
+    }
+
+    /**
+     * 邮箱验证
+     * @param email
+     * @return
+     */
+    @PostMapping("/send")
+    public B<Boolean> sendEMail(@RequestBody ResponseEmail email,HttpServletRequest request) {
+        boolean is = ossService.sendEMail(email,request);
+        return B.ok(is);
     }
 }

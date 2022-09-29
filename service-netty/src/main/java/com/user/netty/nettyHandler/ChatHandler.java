@@ -65,13 +65,13 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
 
                 if (channel != null) {
                     record.setHasRead(1);
-                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,record);
+                    recordService.sendMessage(MqClient.DIRECT_EXCHANGE,MqClient.NETTY_KEY,record);
                     channel.writeAndFlush(new TextWebSocketFrame(gson.toJson(mess)));
                 }else {
                     // 用户不在线 保存到数据库
                     record.setHasRead(0);
                     // 调用 Rabbit 保存信息
-                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.NETTY_KEY,record);
+                    recordService.sendMessage(MqClient.DIRECT_EXCHANGE,MqClient.NETTY_KEY,record);
                     // 不在线,暂时不发送
                     log.info("用户 "+chatRecord.getSendId() +"不在线!!!!");
                 }
@@ -92,7 +92,7 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
                             teamUserChannel.writeAndFlush(new TextWebSocketFrame(gson.toJson(mess)));
                         }
                     });
-                    recordService.sendMessage(MqClient.NETTY_EXCHANGE,MqClient.TEAM_KEY,teamChatRecord);
+                    recordService.sendMessage(MqClient.DIRECT_EXCHANGE,MqClient.TEAM_KEY,teamChatRecord);
 
                 }else {
                     log.info("队伍人员为空: "+ message);

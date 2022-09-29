@@ -16,5 +16,9 @@ public interface RedisKey {
     String redisAddTeamLock = "user:addTeam:key";
     String redisFileAvatarLock = "user:file:avatar:key";
     String redisFileByTeamAvatarLock = "user:file:avatar:team:key";
+    String redisFileByRegisterLock = "user:file:register:user:key";
+    String redisRegisterCode = "redisRegisterCode:";
+
+
 
 }

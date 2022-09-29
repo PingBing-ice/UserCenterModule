@@ -7,6 +7,8 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.net.NoRouteToHostException;
+
 /**
  * 全局异常处理器
  *
@@ -28,5 +30,10 @@ public class GlobalExceptionHeader {
     public B<ErrorCode> runExceptionHeader(Exception e) {
         log.info("runException",e);
         return B.error(ErrorCode.SYSTEM_EXCEPTION.getCode(),ErrorCode.SYSTEM_EXCEPTION.getMessage(),"");
+    }
+    @ExceptionHandler({NoRouteToHostException.class})
+    public B<ErrorCode> NoRouteToHostException(Exception e) {
+        log.info("NoRouteToHostException",e);
+        return B.error(ErrorCode.SYSTEM_EXCEPTION.getCode(),ErrorCode.SYSTEM_EXCEPTION.getMessage(),"连接异常请稍后。。。");
     }
 }

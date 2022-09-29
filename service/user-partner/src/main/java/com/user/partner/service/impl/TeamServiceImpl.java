@@ -78,11 +78,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         ArrayList<UserVo> userVos = new ArrayList<>();
         list.forEach(user -> {
             UserVo userVo = new UserVo();
-            BeanUtils.copyProperties(user,userVo);
+            BeanUtils.copyProperties(user, userVo);
             userVos.add(userVo);
         });
         TeamUserVo teamUserVo = new TeamUserVo();
-        BeanUtils.copyProperties(team,teamUserVo);
+        BeanUtils.copyProperties(team, teamUserVo);
         teamUserVo.setUserVo(userVos);
         return teamUserVo;
     }
@@ -230,13 +230,18 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             Integer status = teamQuery.getStatus();
 
             TeamStatusEnum teamStatusByValue = TeamStatusEnum.getTeamStatusByValue(status);
+
+
             if (teamStatusByValue == null) {
-                teamStatusByValue = TeamStatusEnum.PUBLIC;
+                wrapper.eq("status", TeamStatusEnum.PUBLIC.getValue()).or().eq("status",TeamStatusEnum.ENCRYPTION.getValue());
             }
-            if (!isAdmin && !teamStatusByValue.equals(TeamStatusEnum.PUBLIC)) {
-                throw new GlobalException(ErrorCode.NO_AUTH);
+            if (teamStatusByValue != null&& isAdmin && teamStatusByValue.equals(TeamStatusEnum.PRIVATE)) {
+                wrapper.eq("status", TeamStatusEnum.PUBLIC.getValue()).
+                        or().eq("status",TeamStatusEnum.ENCRYPTION.getValue()).
+                        or().eq("status",TeamStatusEnum.PRIVATE.getValue());
             }
-            wrapper.eq("status", teamStatusByValue.getValue());
+
+
 
         }
 
@@ -254,8 +259,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         List<TeamUserVo> teamUserVos = new ArrayList<>();
         for (Team team : list) {
             String teamId = team.getId();
-
-
             QueryWrapper<UserTeam> teamQueryWrapper = new QueryWrapper<>();
             teamQueryWrapper.eq("team_id", teamId);
             List<UserTeam> userTeams = userTeamService.list(teamQueryWrapper);
@@ -293,8 +296,10 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         }
         return teamUserVos;
     }
+
     /**
      * 查看用户加入的队伍
+     *
      * @param request 1
      * @return 200
      */
@@ -351,7 +356,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 if (expireTime == null || expireTime.before(new Date())) {
                     throw new GlobalException(ErrorCode.NULL_ERROR, "队伍已过期");
                 }
-
                 // 判断队伍的权限
                 Integer status = team.getStatus();
                 TeamStatusEnum statusEnum = TeamStatusEnum.getTeamStatusByValue(status);
@@ -411,6 +415,26 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         if (teamUpdateRequest == null) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
+        Long maxNum = teamUpdateRequest.getMaxNum();
+        String teamName = teamUpdateRequest.getName();
+        String teamDescription = teamUpdateRequest.getDescription();
+        if (maxNum!=null) {
+            if (maxNum < 1 || maxNum >= 20) {
+                throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍人数不满足要求");
+            }
+        }
+        //队伍标题 <= 20
+        if (StringUtils.hasText(teamName)) {
+            if (teamName.length() >= 20) {
+                throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍标题不满足要求");
+            }
+        }
+        //描述 <= 512
+        if (StringUtils.hasText(teamDescription)) {
+            if (teamDescription.length() >= 512) {
+                throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍描述不满足要求");
+            }
+        }
         User loginUser = UserUtils.getLoginUser(request);
         String id = teamUpdateRequest.getId();
         if (!StringUtils.hasText(id)) {
@@ -420,21 +444,26 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         if (team == null) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍为空");
         }
-        if (!loginUser.getId().equals(team.getUserId().toString()) && !UserUtils.isAdmin(request)) {
+        if (!loginUser.getId().equals(team.getUserId()) && !UserUtils.isAdmin(request)) {
             throw new GlobalException(ErrorCode.NO_AUTH);
         }
         Integer status = teamUpdateRequest.getStatus();
-        TeamStatusEnum statusEnum = TeamStatusEnum.getTeamStatusByValue(status);
-        String password = teamUpdateRequest.getPassword();
-        if (statusEnum.equals(TeamStatusEnum.ENCRYPTION)) {
-            if (!StringUtils.hasText(password)) {
-                throw new GlobalException(ErrorCode.NULL_ERROR, "请设置密码");
+        if (status != null && status >= 0) {
+            TeamStatusEnum statusEnum = TeamStatusEnum.getTeamStatusByValue(status);
+            String password = teamUpdateRequest.getPassword();
+            if (statusEnum.equals(TeamStatusEnum.ENCRYPTION)) {
+                if (!StringUtils.hasText(password)) {
+                    throw new GlobalException(ErrorCode.NULL_ERROR, "请设置密码");
+                }
             }
         }
         team = new Team();
         team.setId(teamUpdateRequest.getId());
         BeanUtils.copyProperties(teamUpdateRequest, team);
-        team.setPassword(MD5.getTeamMD5(team.getPassword()));
+        if (StringUtils.hasText(team.getPassword())) {
+            team.setPassword(MD5.getTeamMD5(team.getPassword()));
+        }
+
         boolean b = this.updateById(team);
         if (!b) {
             throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "跟新失败");
@@ -513,8 +542,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
     @Override
     public boolean quitTeamByUser(String teamId, String userId, HttpServletRequest request) {
-        if (!StringUtils.hasText(teamId)&&!StringUtils.hasText(userId)) {
-            throw new GlobalException(ErrorCode.NULL_ERROR,"数据为空...");
+        if (!StringUtils.hasText(teamId) && !StringUtils.hasText(userId)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "数据为空...");
         }
         User loginUser = UserUtils.getLoginUser(request);
         String loginUserId = loginUser.getId();
@@ -527,7 +556,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍不存在");
         }
         if (!loginUserId.equals(teamUserId)) {
-            throw new GlobalException(ErrorCode.NO_AUTH,"权限不足...");
+            throw new GlobalException(ErrorCode.NO_AUTH, "权限不足...");
         }
         QueryWrapper<UserTeam> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId);

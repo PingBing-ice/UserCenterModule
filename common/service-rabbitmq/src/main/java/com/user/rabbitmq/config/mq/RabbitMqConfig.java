@@ -22,9 +22,9 @@ public class RabbitMqConfig {
         return new Jackson2JsonMessageConverter();
     }
 
-    @Bean("nettyExchange")
-    public DirectExchange NettyExchange() {
-        return new DirectExchange(MqClient.NETTY_EXCHANGE);
+    @Bean("directExchange")
+    public DirectExchange directExchange() {
+        return new DirectExchange(MqClient.DIRECT_EXCHANGE);
     }
 
     @Bean("nettyQueue")
@@ -38,9 +38,9 @@ public class RabbitMqConfig {
     }
 
     @Bean
-    public Binding bindingNetty(@Qualifier("nettyExchange") DirectExchange nettyExchange,
+    public Binding bindingNetty(@Qualifier("directExchange") DirectExchange directExchange,
                                 @Qualifier("nettyQueue") Queue nettyQueue) {
-        return BindingBuilder.bind(nettyQueue).to(nettyExchange).with(MqClient.NETTY_KEY);
+        return BindingBuilder.bind(nettyQueue).to(directExchange).with(MqClient.NETTY_KEY);
     }
 
     @Bean("dieExchange")
@@ -63,7 +63,7 @@ public class RabbitMqConfig {
         return QueueBuilder.durable(MqClient.REDIS_QUEUE).build();
     }
     @Bean
-    public Binding redisBinding(@Qualifier("nettyExchange") DirectExchange dieExchange,
+    public Binding redisBinding(@Qualifier("directExchange") DirectExchange dieExchange,
                                 @Qualifier("redisQueue") Queue redisQueue) {
         return BindingBuilder.bind(redisQueue).to(dieExchange).with(MqClient.REDIS_KEY);
     }
@@ -73,8 +73,8 @@ public class RabbitMqConfig {
     }
     @Bean
     public Binding teamBinding(@Qualifier("teamQueue")Queue teamQueue,
-                               @Qualifier("nettyExchange")DirectExchange nettyExchange) {
-        return BindingBuilder.bind(teamQueue).to(nettyExchange).with(MqClient.TEAM_KEY);
+                               @Qualifier("directExchange")DirectExchange directExchange) {
+        return BindingBuilder.bind(teamQueue).to(directExchange).with(MqClient.TEAM_KEY);
     }
 
     @Bean("readTeamQueue")
@@ -83,8 +83,8 @@ public class RabbitMqConfig {
     }
     @Bean
     public Binding ReadTeamQueueBinding(@Qualifier("readTeamQueue")Queue ReadTeamQueue,
-                               @Qualifier("nettyExchange")DirectExchange nettyExchange) {
-        return BindingBuilder.bind(ReadTeamQueue).to(nettyExchange).with(MqClient.READ_TEAM_KEY);
+                               @Qualifier("directExchange")DirectExchange directExchange) {
+        return BindingBuilder.bind(ReadTeamQueue).to(directExchange).with(MqClient.READ_TEAM_KEY);
     }
     @Bean("ossQueue")
     public Queue ossQueue() {
@@ -92,7 +92,17 @@ public class RabbitMqConfig {
     }
     @Bean
     public Binding ossQueueBinding(@Qualifier("ossQueue")Queue ossQueue,
-                                        @Qualifier("nettyExchange")DirectExchange nettyExchange) {
-        return BindingBuilder.bind(ossQueue).to(nettyExchange).with(MqClient.OSS_KEY);
+                                        @Qualifier("directExchange")DirectExchange directExchange) {
+        return BindingBuilder.bind(ossQueue).to(directExchange).with(MqClient.OSS_KEY);
+    }
+
+    @Bean("removeRedisByKeyQueue")
+    public Queue removeRedisByKeyQueue() {
+        return QueueBuilder.durable(MqClient.REMOVE_REDIS_QUEUE).build();
+    }
+    @Bean
+    public Binding removeRedisByKeyQueueBinding(@Qualifier("removeRedisByKeyQueue")Queue removeRedisByKeyQueue,
+                                   @Qualifier("directExchange")DirectExchange directExchange) {
+        return BindingBuilder.bind(removeRedisByKeyQueue).to(directExchange).with(MqClient.REMOVE_REDIS_KEY);
     }
 }

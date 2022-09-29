@@ -7,7 +7,7 @@ package com.user.rabbitmq.config.mq;
 
 public class MqClient {
     // 普通
-    public static final String NETTY_EXCHANGE = "exchange_netty";
+    public static final String DIRECT_EXCHANGE = "exchange_direct";
     public static final String NETTY_QUEUE = "netty_queue";
     public static final String NETTY_KEY = "netty";
     public static final String REDIS_QUEUE = "redis_queue";
@@ -18,6 +18,9 @@ public class MqClient {
     public static final String READ_TEAM_KEY = "read_team_key";
     public static final String OSS_QUEUE = "oss_queue";
     public static final String OSS_KEY = "oss_key";
+    // 删除 redis key
+    public static final String REMOVE_REDIS_QUEUE = "removeRedisByQueue";
+    public static final String REMOVE_REDIS_KEY = "removeRedisByKey";
 
     // 死信
     public static final String DIE_EXCHANGE ="exchange_die";

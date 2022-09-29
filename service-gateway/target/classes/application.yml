@@ -1,0 +1,40 @@
+server:
+  port: 8088
+spring:
+  application:
+    name: service-gateway
+  cloud:
+    gateway:
+#      globalcors:
+#        cors-configurations:
+#          '[/**]':
+#            allowedOrigins:
+#              - "http://localhost:8001"
+#            allowedMethods:
+#              - "GET"
+#              - "POST"
+#              - "DELETE"
+#              - "PUT"
+#              - "OPTIONS"
+#            allowedHeaders: "*"
+#            allowCredentials: true
+#            maxAge: 360000
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: user-center
+          uri: lb://user-center
+          predicates:
+            - Path=/api/**
+        - id: user-partner
+          uri: lb://user-partner
+          predicates:
+            - Path=/partner/**
+        - id: user-oss
+          uri: lb://user-oss
+          predicates:
+            - Path=/oss/**
+    nacos:
+      discovery:
+        server-addr: localhost:8848

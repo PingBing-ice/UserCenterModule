@@ -28,7 +28,8 @@ create table user_friend
     user_id     varchar(255)                       null comment '用户id',
     friends_id  varchar(255)                       null comment '朋友id',
     comments    varchar(255)                       null comment '朋友备注',
-    create_time datetime default CURRENT_TIMESTAMP null comment '添加好友日期'
+    create_time datetime default CURRENT_TIMESTAMP null comment '添加好友日期',
+    is_delete   tinyint(1) default 0      not null
 );
 create table user_friend_req
 (
@@ -57,18 +58,19 @@ create table chat_record
 
 create table team
 (
-    id          bigint                               not null comment 'id'
+    id          bigint                             not null comment 'id'
         primary key,
-    name        varchar(256)                         null comment '队伍的名称',
-    user_id     bigint                               null comment '用户id',
-    description varchar(1024)                        null comment '描述',
-    max_num     bigint(20) default 1                 not null comment '最大人数',
-    password    varchar(32)                          null comment '密码',
-    status      varchar(256)                         null comment '状态',
-    expire_time datetime                             null comment '创建队伍的时间',
-    is_delete   tinyint    default 0                 not null comment '是否删除',
-    create_time datetime   default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_time datetime   default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
+    name        varchar(256)                       null comment '队伍的名称',
+    user_id     bigint                             null comment '用户id',
+    description varchar(1024)                      null comment '描述',
+    max_num     bigint   default 1                 not null comment '最大人数',
+    password    varchar(32)                        null comment '密码',
+    status      varchar(256)                       null comment '状态',
+    expire_time datetime                           null comment '创建队伍的时间',
+    is_delete   tinyint  default 0                 not null comment '是否删除',
+    create_time datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间',
+    avatar_url  varchar(255)                       null comment '队伍头像'
 )
     comment '队伍表';
 

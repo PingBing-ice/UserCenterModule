@@ -3,6 +3,7 @@ package com.user.partner.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.user.model.constant.RedisKey;
 import com.user.model.domain.ChatRecord;
 import com.user.model.domain.User;
 import com.user.model.domain.UserFriend;
@@ -11,6 +12,8 @@ import com.user.openfeign.UserOpenFeign;
 import com.user.partner.mapper.UserFriendMapper;
 import com.user.partner.service.IChatRecordService;
 import com.user.partner.service.IUserFriendService;
+import com.user.rabbitmq.config.mq.MqClient;
+import com.user.rabbitmq.config.mq.RabbitService;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
 import com.user.util.utils.UserUtils;
@@ -42,6 +45,8 @@ public class UserFriendServiceImpl extends ServiceImpl<UserFriendMapper, UserFri
     private UserOpenFeign userOpenFeign;
     @Resource
     private IChatRecordService chatRecordService;
+    @Resource
+    private RabbitService rabbitService;
 
     @Override
     @Transactional
@@ -54,6 +59,8 @@ public class UserFriendServiceImpl extends ServiceImpl<UserFriendMapper, UserFri
         if (insert <= 0) {
             throw new RuntimeException("添加好友失败");
         }
+        String redisKey = RedisKey.selectFriend + userId;
+        rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE,MqClient.REMOVE_REDIS_KEY,redisKey);
     }
 
     @Override
@@ -126,7 +133,8 @@ public class UserFriendServiceImpl extends ServiceImpl<UserFriendMapper, UserFri
         if (count > 0) {
             return chatRecordService.remove(wrapper);
         }
-
+        String redisKey = RedisKey.selectFriend + userId;
+        rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE,MqClient.REMOVE_REDIS_KEY,redisKey);
         return true;
     }
 

@@ -18,16 +18,17 @@ import java.util.Map;
  */
 public interface IUserService extends IService<User> {
 
-
+    /**
+     * 获取登录用户信息
+     * @param request request
+     * @return 用户
+     */
     User getLoginUser(HttpServletRequest request);
 
     /**
      * 用户注册
      *
-     * @param userAccount   账户
-     * @param password      密码
-     * @param checkPassword 校验码
-     * @param planetCode 编号
+     * @param userRegisterRequest   账户
      * @return 返回id值
      */
     Long userRegister(UserRegisterRequest userRegisterRequest);
@@ -97,5 +98,11 @@ public interface IUserService extends IService<User> {
      */
     List<User> searchUserTag(String tag, HttpServletRequest request);
 
+    /**
+     * 匹配
+     * @param num 数量
+     * @param request 登录
+     * @return 数组
+     */
     List<User> matchUsers(long num, HttpServletRequest request);
 }

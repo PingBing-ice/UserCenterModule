@@ -1,7 +1,12 @@
 package com.user.usercenter;
 
+import com.user.util.utils.ThreadUtil;
+
 import java.io.FileInputStream;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountedCompleter;
+import java.util.concurrent.ExecutionException;
 
 /**
  * @author ice
@@ -29,9 +34,38 @@ public class TestSql {
 //
 //    }
 
-    public static void main(String[] args) throws Exception{
-        FileChannel fileChannel = new FileInputStream("").getChannel();
+    public static void main(String[] args) throws Exception {
+        for (int i = 0; i < 10; i++) {
+            System.out.println(System.currentTimeMillis() + "===================");
+            String a = "a";
+            try {
+                Thread.sleep(60);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            CompletableFuture<Void> completableFuture = CompletableFuture.runAsync(() -> {
+                System.out.println(System.currentTimeMillis() + "===000000000000000000000000000000=="+a);
 
-        int i = Integer.parseInt("1");
+            }, ThreadUtil.getThreadPool());
+            System.out.println("===========结束=========" + System.currentTimeMillis() + "==" );
+
+            completableFuture.join();
+
+        }
+
+    }
+
+    public static boolean is() {
+
+
+
+
+
+        return false;
+    }
+
+    public  static void is2(String a) {
+
+
     }
 }

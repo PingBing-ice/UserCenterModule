@@ -16,7 +16,7 @@ import java.util.List;
  * @since 2022-07-28
  */
 public interface IUserFriendReqService extends IService<UserFriendReq> {
-    int sendRequest(String fromUserId, String toUserId);
+    void sendRequest(String fromUserId, String toUserId);
 
     List<User> checkFriend(String userId);
 

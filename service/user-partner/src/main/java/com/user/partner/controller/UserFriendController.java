@@ -7,6 +7,7 @@ import com.user.model.domain.User;
 import com.user.model.resp.FriendUserResponse;
 import com.user.partner.service.IUserFriendReqService;
 import com.user.partner.service.IUserFriendService;
+import com.user.rabbitmq.config.mq.MqClient;
 import com.user.util.common.B;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
@@ -52,18 +53,12 @@ public class UserFriendController {
 
     // 添加好友
     @GetMapping("/friendUser")
-    public B<String> friendRequest(@RequestParam(required = false)String toUserId, HttpServletRequest request) {
+    public B<String> friendRequest(@RequestParam(required = false) String toUserId, HttpServletRequest request) {
         User loginUser = UserUtils.getLoginUser(request);
         String userId = loginUser.getId();
-        int id = friendReqService.sendRequest(userId, toUserId);
-        if (id != 1) {
-            throw new GlobalException(ErrorCode.PARAMS_ERROR, "发送失败");
-        }
-        String redisKey = RedisKey.selectFriend + userId;
-        Boolean isKey = redisTemplate.hasKey(redisKey);
-        if (Boolean.TRUE.equals(isKey)) {
-            redisTemplate.delete(redisKey);
-        }
+        friendReqService.sendRequest(userId, toUserId);
+
+
         return B.ok();
     }
 
@@ -74,9 +69,6 @@ public class UserFriendController {
         User user = UserUtils.getLoginUser(request);
         String userId = user.getId();
         List<User> users = friendReqService.checkFriend(userId);
-        if (users == null) {
-            return B.error(ErrorCode.NULL_ERROR);
-        }
         return B.ok(users);
     }
 
@@ -112,11 +104,7 @@ public class UserFriendController {
         String userId = user.getId();
         friendService.addFriendReq(reqId, userId);
 
-        String redisKey = RedisKey.selectFriend + userId;
-        Boolean isKey = redisTemplate.hasKey(redisKey);
-        if (Boolean.TRUE.equals(isKey)) {
-            redisTemplate.delete(redisKey);
-        }
+
         return B.ok();
     }
 
@@ -140,26 +128,26 @@ public class UserFriendController {
 
         List<User> userList = friendService.selectFriend(userId);
         if (!CollectionUtils.isEmpty(userList)) {
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                try {
-                    redisTemplate.opsForValue().set(redisKey, userList, 180, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    log.error("缓存失败");
-                    log.error(e.getMessage());
-                }
-            }, ThreadUtil.getThreadPool());
-            future.join();
+
+            try {
+                redisTemplate.opsForValue().set(redisKey, userList, 180, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.error("缓存失败");
+                log.error(e.getMessage());
+            }
+
         }
         return B.ok(userList);
     }
 
     /**
      * 查看好友详情
+     *
      * @param friendId
      * @return
      */
     @GetMapping("/getFriendUser")
-    public B<FriendUserResponse> getFriendUser(@RequestParam("friendId")String friendId,HttpServletRequest request) {
+    public B<FriendUserResponse> getFriendUser(@RequestParam("friendId") String friendId, HttpServletRequest request) {
         FriendUserResponse friendUser = friendService.getFriendUser(friendId, request);
         return B.ok(friendUser);
     }
@@ -175,11 +163,7 @@ public class UserFriendController {
         if (!is) {
             return B.error();
         }
-        String redisKey = RedisKey.selectFriend + userId;
-        Boolean isKey = redisTemplate.hasKey(redisKey);
-        if (Boolean.TRUE.equals(isKey)) {
-            redisTemplate.delete(redisKey);
-        }
+
         return B.ok();
     }
 }
