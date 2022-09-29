@@ -41,9 +41,9 @@ aliyun:
   oss:
     file:
       endpoint: https://oss-cn-hangzhou.aliyuncs.com
-      keyid: LTAI5tEg9gwD1vutiFsgAUbS
-      keysecret: AXSshK3aTvTro5HrzwdlUjh7WLLAx3
-      bucketname: bing-edu
+      keyid: 
+      keysecret: 
+      bucketname: 
 
 
 email:
