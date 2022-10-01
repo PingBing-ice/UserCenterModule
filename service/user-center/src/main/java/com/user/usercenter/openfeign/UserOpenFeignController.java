@@ -42,4 +42,15 @@ public class UserOpenFeignController {
         }
         return false;
     }
+
+    @GetMapping("/ForgetUserEmail")
+    public User forgetUserEmail(@RequestParam("email")String email) {
+        if (StringUtils.hasText(email)) {
+            QueryWrapper<User> wrapper = new QueryWrapper<>();
+            wrapper.select("user_account", "email");
+            wrapper.eq("email", email);
+            return userService.getOne(wrapper);
+        }
+        return null;
+    }
 }

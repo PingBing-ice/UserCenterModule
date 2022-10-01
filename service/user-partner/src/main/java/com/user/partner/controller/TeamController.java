@@ -137,9 +137,9 @@ public class TeamController {
 
     /**
      * 退出队伍
-     * @param teamId
-     * @param request
-     * @return
+     * @param teamId 队伍id
+     * @param request 响应
+     * @return 返回
      */
     @GetMapping("/quit")
     public B<Boolean> quitTeam(@RequestParam String teamId, HttpServletRequest request) {

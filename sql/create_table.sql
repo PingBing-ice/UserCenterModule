@@ -55,6 +55,8 @@ create table chat_record
     message     varchar(1024)                      null comment '消息'
 )
     comment '聊天记录表';
+ALTER TABLE `user_center`.`chat_record`
+    ADD INDEX `user`(`user_id`, `friend_id`);
 
 create table team
 (
@@ -87,6 +89,8 @@ create table user_team
     update_time datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '修改时间'
 )
     comment '队伍表';
+ALTER TABLE `user_center`.`user_team`
+    ADD INDEX `team`(`user_id`, `team_id`);
 
 create table team_chat_record
 (

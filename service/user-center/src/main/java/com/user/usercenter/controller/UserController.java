@@ -7,6 +7,7 @@ import com.user.model.constant.UserStatus;
 import com.user.model.domain.User;
 import com.user.model.request.UserLoginRequest;
 import com.user.model.request.UserRegisterRequest;
+import com.user.model.request.UserSearchTagAndTxtRequest;
 import com.user.rabbitmq.config.mq.RabbitService;
 import com.user.usercenter.service.IUserService;
 import com.user.util.common.B;
@@ -102,6 +103,12 @@ public class UserController {
         return B.ok(user);
     }
 
+    // 忘记密码
+    @PostMapping("/forget")
+    public B<Boolean> userForget(@RequestBody UserRegisterRequest registerRequest) {
+        boolean is = userService.userForget(registerRequest);
+        return B.ok(is);
+    }
     // 查询用户
     @GetMapping("/searchUser")
     public B<Map<String, Object>> searchUser(@RequestParam(required = false) String username, @RequestParam(required = false) Long current, Long size, HttpServletRequest request) {
@@ -152,12 +159,10 @@ public class UserController {
     }
 
 
-    @GetMapping("/search/tags")
-    public B<List<User>> getSearchUserTag(@RequestParam(required = false) List<String> tagNameList) {
-        if (CollectionUtils.isEmpty(tagNameList)) {
-            throw new GlobalException(ErrorCode.NULL_ERROR, "数据为空...");
-        }
-        List<User> userList = userService.searchUserTag(tagNameList);
+    @PostMapping("/search/tags/txt")
+    public B<List<User>> getSearchUserTag(@RequestBody UserSearchTagAndTxtRequest userSearchTagAndTxtRequest) {
+
+        List<User> userList = userService.searchUserTag(userSearchTagAndTxtRequest);
         return B.ok(userList);
     }
 

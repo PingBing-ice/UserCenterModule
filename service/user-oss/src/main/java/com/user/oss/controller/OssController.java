@@ -38,13 +38,36 @@ public class OssController {
     }
 
     /**
-     * 邮箱验证
+     * 注册邮箱验证
      * @param email
      * @return
      */
     @PostMapping("/send")
     public B<Boolean> sendEMail(@RequestBody ResponseEmail email,HttpServletRequest request) {
         boolean is = ossService.sendEMail(email,request);
+        return B.ok(is);
+    }
+
+    /**
+     * 忘记密码邮箱验证
+     * @param email
+     * @return
+     */
+    @PostMapping("/sendForget")
+    public B<Boolean> sendForgetEMail(@RequestBody ResponseEmail email,HttpServletRequest request) {
+        boolean is = ossService.sendForgetEMail(email,request);
+        return B.ok(is);
+    }
+
+    /**
+     * 发送绑定邮件的验证码
+     * @param email 邮件
+     * @param request
+     * @return
+     */
+    @PostMapping("/sendBinDing")
+    public B<Boolean> sendBinDingEMail(@RequestBody ResponseEmail email,HttpServletRequest request) {
+        boolean is = ossService.sendBinDingEMail(email,request);
         return B.ok(is);
     }
 }

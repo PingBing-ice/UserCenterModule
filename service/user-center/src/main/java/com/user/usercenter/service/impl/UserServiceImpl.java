@@ -13,6 +13,7 @@ import com.user.model.constant.RedisKey;
 import com.user.model.constant.UserStatus;
 import com.user.model.domain.User;
 import com.user.model.request.UserRegisterRequest;
+import com.user.model.request.UserSearchTagAndTxtRequest;
 import com.user.rabbitmq.config.mq.MqClient;
 import com.user.rabbitmq.config.mq.RabbitService;
 import com.user.usercenter.mapper.UserMapper;
@@ -265,9 +266,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
      * @return 返回用户列表
      */
     @Override
-    public List<User> searchUserTag(List<String> tagNameList) {
-        if (CollectionUtils.isEmpty(tagNameList)) {
-            throw new GlobalException(ErrorCode.NULL_ERROR);
+    public List<User> searchUserTag(UserSearchTagAndTxtRequest userSearchTagAndTxtRequest) {
+        if (userSearchTagAndTxtRequest == null) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "请求数据为空");
+        }
+
+        List<String> tagNameList = userSearchTagAndTxtRequest.getTagNameList();
+        String searchTxt = userSearchTagAndTxtRequest.getSearchTxt();
+        if (!StringUtils.hasText(searchTxt)&& CollectionUtils.isEmpty(tagNameList)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR,"请求数据为空");
         }
         // sql 语句查询
 //        QueryWrapper<User> wrapper = new QueryWrapper<>();
@@ -278,22 +285,34 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 //        List<User> userList = baseMapper.selectList(wrapper);
         // 内存查询
         QueryWrapper<User> wrapper = new QueryWrapper<>();
+        if (StringUtils.hasText(searchTxt)) {
+            wrapper.and(wq -> wq.like("username", searchTxt).or().like("user_account", searchTxt)
+                    .or().like("gender", searchTxt).or().like("tel", searchTxt).or().like("email", searchTxt).
+                    like("profile", searchTxt));
+        }
         List<User> userList = baseMapper.selectList(wrapper);
-        Gson gson = new Gson();
+        if (userList.size() <= 0) {
+            return new ArrayList<>();
+        }
 
-        return userList.stream().filter(user -> {
-            String tagStr = user.getTags();
-            // 将json 数据解析成 Set
-            Set<String> tempTagNameSet = gson.fromJson(tagStr, new TypeToken<Set<String>>() {
-            }.getType());
-            tempTagNameSet = Optional.ofNullable(tempTagNameSet).orElse(new HashSet<>());
-            for (String tagName : tagNameList) {
-                if (tempTagNameSet.contains(tagName)) {
-                    return true;
+        if (!CollectionUtils.isEmpty(tagNameList)) {
+            Gson gson = new Gson();
+            return userList.stream().filter(user -> {
+                String tagStr = user.getTags();
+                // 将json 数据解析成 Set
+                Set<String> tempTagNameSet = gson.fromJson(tagStr, new TypeToken<Set<String>>() {
+                }.getType());
+                tempTagNameSet = Optional.ofNullable(tempTagNameSet).orElse(new HashSet<>());
+                for (String tagName : tagNameList) {
+                    if (tempTagNameSet.contains(tagName)) {
+                        return true;
+                    }
                 }
-            }
-            return false;
-        }).map(this::getSafetyUser).collect(Collectors.toList());
+                return false;
+            }).map(this::getSafetyUser).collect(Collectors.toList());
+        }
+
+        return userList;
     }
 
 
@@ -325,6 +344,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String tel = updateUser.getTel();
         String email = updateUser.getEmail();
         Integer isDelete = updateUser.getIsDelete();
+        String profile = updateUser.getProfile();
         String tags = updateUser.getTags();
 
         if (isDelete != null) {
@@ -336,7 +356,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         if (!StringUtils.hasText(username) && !StringUtils.hasText(tel) &&
-                !StringUtils.hasText(email) && !StringUtils.hasText(tags)) {
+                !StringUtils.hasText(email) && !StringUtils.hasText(tags)
+                && !StringUtils.hasText(gender) && !StringUtils.hasText(profile)) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
         if (StringUtils.hasText(gender) && !gender.equals("男") && !gender.equals("女")) {
@@ -359,6 +380,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         int update = baseMapper.updateById(updateUser);
         if (update > 0) {
             rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE, MqClient.REMOVE_REDIS_KEY, RedisKey.redisIndexKey);
+        }else {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "修改失败");
         }
         return update;
 
@@ -529,5 +552,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         return findUserList;
 //        return indexDistanceMap.keySet().parallelStream().map(indexDistanceMap::get).limit(num).collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean userForget(UserRegisterRequest registerRequest) {
+        if (registerRequest == null) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "账号为空");
+        }
+        String userAccount = registerRequest.getUserAccount();
+        String email = registerRequest.getEmail();
+        String code = registerRequest.getCode();
+        String password = registerRequest.getPassword();
+        String checkPassword = registerRequest.getCheckPassword();
+        if (!StringUtils.hasText(userAccount)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "账号为空");
+        }
+        if (!StringUtils.hasText(email)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "邮箱为空");
+        }
+        if (!StringUtils.hasText(code)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "验证码为空");
+        }
+        if (!StringUtils.hasText(password)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "密码为空");
+        }
+        if (!StringUtils.hasText(checkPassword)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "确认密码为空");
+        }
+        QueryWrapper<User> wrapper = new QueryWrapper<>();
+        wrapper.eq("email", email);
+        User user = this.getOne(wrapper);
+        if (user == null) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "该邮箱没有注册过");
+        }
+        String userUserAccount = user.getUserAccount();
+        if (!userAccount.equals(userUserAccount)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "请输入该邮箱绑定的账号");
+        }
+        String redisCode = redisTemplate.opsForValue().get(RedisKey.redisForgetCode + email);
+        if (!StringUtils.hasText(redisCode)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "验证码已过期请重试");
+        }
+        if (!code.equals(redisCode)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "验证码错误");
+        }
+        String md5 = MD5.getMD5(password);
+        user.setPassword(md5);
+        boolean u = this.updateById(user);
+        if (!u) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "修改错误请刷新重试");
+        }
+        return u;
     }
 }

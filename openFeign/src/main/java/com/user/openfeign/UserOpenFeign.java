@@ -24,4 +24,7 @@ public interface UserOpenFeign {
 
     @GetMapping("/api/user/feign/seeUserEmail")
     boolean seeUserEmail(@RequestParam("email") String email);
+
+    @GetMapping("/api/user/feign//ForgetUserEmail")
+    User forgetUserEmail(@RequestParam("email") String email);
 }

@@ -58,6 +58,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
     @Autowired
     private ITeamChatRecordService chatRecordService;
 
+    // 时间格式器
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
     @Override
@@ -215,9 +216,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 wrapper.eq("id", id);
             }
             String searchTxt = teamQuery.getSearchTxt();
-            if (StringUtils.hasText(searchTxt)) {
-                wrapper.and(wq -> wq.like("name", searchTxt).or().like("description", searchTxt));
-            }
             Integer maxNum = teamQuery.getMaxNum();
             if (maxNum != null && maxNum > 0) {
                 wrapper.eq("max_num", maxNum);
@@ -227,22 +225,20 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
             if (userId != null && userId > 0) {
                 wrapper.eq("user_id", userId);
             }
+            if (StringUtils.hasText(searchTxt)) {
+                wrapper.like("name", searchTxt).or().like("description", searchTxt);
+            }
             Integer status = teamQuery.getStatus();
-
             TeamStatusEnum teamStatusByValue = TeamStatusEnum.getTeamStatusByValue(status);
 
-
             if (teamStatusByValue == null) {
-                wrapper.eq("status", TeamStatusEnum.PUBLIC.getValue()).or().eq("status",TeamStatusEnum.ENCRYPTION.getValue());
+                wrapper.and(wr -> wr.eq("status", TeamStatusEnum.PUBLIC.getValue()).or().eq("status", TeamStatusEnum.ENCRYPTION.getValue()));
             }
-            if (teamStatusByValue != null&& isAdmin && teamStatusByValue.equals(TeamStatusEnum.PRIVATE)) {
-                wrapper.eq("status", TeamStatusEnum.PUBLIC.getValue()).
-                        or().eq("status",TeamStatusEnum.ENCRYPTION.getValue()).
-                        or().eq("status",TeamStatusEnum.PRIVATE.getValue());
+            if (teamStatusByValue != null && isAdmin && teamStatusByValue.equals(TeamStatusEnum.PRIVATE)) {
+                wrapper.and(wr -> wr.eq("status", TeamStatusEnum.PUBLIC.getValue()).
+                        or().eq("status", TeamStatusEnum.ENCRYPTION.getValue()).
+                        or().eq("status", TeamStatusEnum.PRIVATE.getValue()));
             }
-
-
-
         }
 
 
@@ -276,7 +272,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
                 }
             }
             teamUserVos.add(teamUserVo);
-
 //            Long userId = team.getUserId();
 //            if (userId == null) {
 //                continue;
@@ -418,7 +413,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
         Long maxNum = teamUpdateRequest.getMaxNum();
         String teamName = teamUpdateRequest.getName();
         String teamDescription = teamUpdateRequest.getDescription();
-        if (maxNum!=null) {
+        if (maxNum != null) {
             if (maxNum < 1 || maxNum >= 20) {
                 throw new GlobalException(ErrorCode.PARAMS_ERROR, "队伍人数不满足要求");
             }

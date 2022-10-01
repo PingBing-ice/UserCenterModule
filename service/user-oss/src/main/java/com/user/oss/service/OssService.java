@@ -17,4 +17,8 @@ public interface OssService {
     String upFileByTeam(MultipartFile file, User loginUser, String teamID);
 
     boolean sendEMail(ResponseEmail email, HttpServletRequest request);
+
+    boolean sendForgetEMail(ResponseEmail email, HttpServletRequest request);
+
+    boolean sendBinDingEMail(ResponseEmail email, HttpServletRequest request);
 }

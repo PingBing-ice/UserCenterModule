@@ -3,6 +3,7 @@ package com.user.usercenter.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.user.model.domain.User;
 import com.user.model.request.UserRegisterRequest;
+import com.user.model.request.UserSearchTagAndTxtRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -42,6 +43,7 @@ public interface IUserService extends IService<User> {
      */
     User userLogin(String userAccount, String password , HttpServletRequest request);
 
+
     /**
      *  用户脱敏
      * @param user
@@ -74,7 +76,7 @@ public interface IUserService extends IService<User> {
      * 根据标签搜索用户
      * @return
      */
-    List<User> searchUserTag(List<String> tagList);
+    List<User> searchUserTag(UserSearchTagAndTxtRequest userSearchTagAndTxtRequest);
 
     /**
      *  修改用户
@@ -105,4 +107,11 @@ public interface IUserService extends IService<User> {
      * @return 数组
      */
     List<User> matchUsers(long num, HttpServletRequest request);
+
+    /**
+     * 用户忘记密码
+     * @param registerRequest
+     * @return
+     */
+    boolean userForget(UserRegisterRequest registerRequest);
 }

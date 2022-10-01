@@ -20,6 +20,7 @@ import com.user.model.utils.IpUtilSealUp;
 import com.user.util.utils.IpUtils;
 import com.user.util.utils.RandomUtil;
 import com.user.util.utils.TimeUtils;
+import com.user.util.utils.UserUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -66,15 +67,12 @@ public class OssServiceImpl implements OssService {
     private RedissonClient redissonClient;
 
 
-
-
-
     /**
      * 用户头像的上传
      *
-     * @param file
-     * @param loginUser
-     * @return
+     * @param file 上传的文件
+     * @param loginUser 登录的用户
+     * @return 返回之
      */
     @Override
     public String upload(MultipartFile file, User loginUser) {
@@ -95,11 +93,11 @@ public class OssServiceImpl implements OssService {
                 Integer integer = TimeUtils.getRemainSecondsOneDay(new Date());
                 stringRedisTemplate.opsForValue().set(redisKey, new Date().toString(), integer, TimeUnit.SECONDS);
                 // 删除掉主页的用户
-                rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE,MqClient.REMOVE_REDIS_KEY,RedisKey.redisIndexKey);
+                rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE, MqClient.REMOVE_REDIS_KEY, RedisKey.redisIndexKey);
                 return url;
             }
         } catch (InterruptedException e) {
-            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "加锁失败");
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "系统错误");
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
@@ -137,7 +135,7 @@ public class OssServiceImpl implements OssService {
                 return url;
             }
         } catch (InterruptedException e) {
-            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "加锁失败");
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "系统错误");
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
@@ -184,39 +182,29 @@ public class OssServiceImpl implements OssService {
     }
 
     /**
-     * 发送邮件
+     * 忘记密码
      *
-     * @param responseEmail 接受的邮件
-     * @return 返回Boolean
+     * @param responseEmail responseEmail
+     * @param request 用户信息
+     * @return true
      */
     @Override
-    public  boolean sendEMail(ResponseEmail responseEmail, HttpServletRequest request) {
-        RLock lock = redissonClient.getLock(RedisKey.redisFileByRegisterLock);
+    public boolean sendForgetEMail(ResponseEmail responseEmail, HttpServletRequest request) {
+        RLock lock = redissonClient.getLock(RedisKey.redisFileByForgetLock);
         try {
             if (lock.tryLock(0, 3000, TimeUnit.MILLISECONDS)) {
                 // 获取真实ip
-                String ipAddress = IpUtils.getIpAddress(request);
-
-                String num = stringRedisTemplate.opsForValue().get(ipAddress);
-                if (StringUtils.hasText(num)) {
-                    int max = Integer.parseInt(num);
-                    // 一天的次数过多
-                    if (max >= 20) {
-                        IpUtilSealUp.addIpList(ipAddress);
-                        throw new GlobalException(ErrorCode.PARAMS_ERROR);
-                    }
-                    stringRedisTemplate.opsForValue().increment(ipAddress);
-                }else {
-                    stringRedisTemplate.opsForValue().set(ipAddress, "1", TimeUtils.getRemainSecondsOneDay(new Date()),
-                            TimeUnit.SECONDS);
-                }
-
+                ipEmailUtil(request);
                 if (responseEmail == null) {
                     throw new GlobalException(ErrorCode.NULL_ERROR, "请输入邮箱");
                 }
                 String email = responseEmail.getEmail();
+                String userAccount = responseEmail.getUserAccount();
                 if (!StringUtils.hasText(email)) {
                     throw new GlobalException(ErrorCode.NULL_ERROR, "请输入邮箱");
+                }
+                if (!StringUtils.hasText(userAccount)) {
+                    throw new GlobalException(ErrorCode.NULL_ERROR, "请输入账号");
                 }
                 String pattern = "\\w[-\\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\\.)+[A-Za-z]{2,14}";
 
@@ -224,10 +212,16 @@ public class OssServiceImpl implements OssService {
                 if (!matcher.matches()) {
                     throw new GlobalException(ErrorCode.PARAMS_ERROR, "请输入正确邮箱");
                 }
-                boolean userEmail = userOpenFeign.seeUserEmail(email);
-                if (!userEmail) {
-                    throw new GlobalException(ErrorCode.PARAMS_ERROR, "注册邮箱重复");
+                User user = userOpenFeign.forgetUserEmail(email);
+
+                if (user == null) {
+                    throw new GlobalException(ErrorCode.NULL_ERROR, "该邮箱没有注册过");
                 }
+                String userUserAccount = user.getUserAccount();
+                if (!userAccount.equals(userUserAccount)) {
+                    throw new GlobalException(ErrorCode.NULL_ERROR, "请输入该邮箱绑定的账号");
+                }
+
                 String code = RandomUtil.getRandomFour();
                 String[] split = email.split("@");
                 String name = split[0];
@@ -235,6 +229,45 @@ public class OssServiceImpl implements OssService {
                 if (!sendQQEmail) {
                     throw new GlobalException(ErrorCode.PARAMS_ERROR, "发送失败请重试");
                 }
+                String redisKey = RedisKey.redisForgetCode + email;
+                try {
+                    stringRedisTemplate.opsForValue().set(redisKey, code, 60, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+        } catch (InterruptedException e) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "系统错误");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 发送注册邮件
+     *
+     * @param responseEmail 接受的邮件
+     * @return 返回Boolean
+     */
+    @Override
+    public boolean sendEMail(ResponseEmail responseEmail, HttpServletRequest request) {
+        RLock lock = redissonClient.getLock(RedisKey.redisFileByRegisterLock);
+        try {
+            if (lock.tryLock(0, 3000, TimeUnit.MILLISECONDS)) {
+                // 获取真实ip
+                ipEmailUtil(request);
+
+                if (responseEmail == null) {
+                    throw new GlobalException(ErrorCode.NULL_ERROR, "请输入邮箱");
+                }
+                String email = getEmail(responseEmail);
+                if (userOpenFeign.seeUserEmail(email)) {
+                    throw new GlobalException(ErrorCode.PARAMS_ERROR, "注册邮箱重复");
+                }
+                String code = getCode(email);
                 String redisKey = RedisKey.redisRegisterCode + email;
                 try {
                     stringRedisTemplate.opsForValue().set(redisKey, code, 60, TimeUnit.SECONDS);
@@ -243,7 +276,7 @@ public class OssServiceImpl implements OssService {
                 }
             }
         } catch (InterruptedException e) {
-            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "加锁失败");
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "系统错误");
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
@@ -253,12 +286,82 @@ public class OssServiceImpl implements OssService {
     }
 
     /**
+     * 发送绑定验证码
+     *
+     * @param responseEmail responseEmail
+     * @param request s
+     * @return s
+     */
+    @Override
+    public boolean sendBinDingEMail(ResponseEmail responseEmail, HttpServletRequest request) {
+        RLock lock = redissonClient.getLock(RedisKey.redisFileByBingDingLock);
+        try {
+            if (lock.tryLock(0, 3000, TimeUnit.MILLISECONDS)) {
+                // 获取真实ip
+
+                ipEmailUtil(request);
+                User user = UserUtils.getLoginUser(request);
+                String email = getEmail(responseEmail);
+                String userEmail = user.getEmail();
+                if (StringUtils.hasText(userEmail)) {
+                    if (!userEmail.equals(email)) {
+                        throw new GlobalException(ErrorCode.PARAMS_ERROR, "");
+                    }
+                }
+                if (userOpenFeign.seeUserEmail(email)) {
+                    throw new GlobalException(ErrorCode.PARAMS_ERROR, "该邮箱已被注册");
+                }
+
+                String code = getCode(email);
+                String redisKey = RedisKey.redisFileByBingDingKey + email;
+                try {
+                    stringRedisTemplate.opsForValue().set(redisKey, code, 60, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+        } catch (InterruptedException e) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "系统错误");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+        return true;
+    }
+
+    private String getCode(String email) {
+        String code = RandomUtil.getRandomSix();
+        String[] split = email.split("@");
+        String name = split[0];
+        boolean sendQQEmail = sendQQEmail(email, code, name);
+        if (!sendQQEmail) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "发送失败请重试");
+        }
+        return code;
+    }
+
+    private String getEmail(ResponseEmail responseEmail) {
+        String email = responseEmail.getEmail();
+        if (!StringUtils.hasText(email)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "请输入邮箱");
+        }
+        String pattern = "\\w[-\\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\\.)+[A-Za-z]{2,14}";
+
+        Matcher matcher = Pattern.compile(pattern).matcher(email);
+        if (!matcher.matches()) {
+            throw new GlobalException(ErrorCode.PARAMS_ERROR, "请输入正确邮箱");
+        }
+        return email;
+    }
+
+    /**
      * 发送邮件(参数自己根据自己的需求来修改，发送短信验证码)
      *
      * @param receives 接收人的邮箱
-     * @param code      验证码
-     * @param name      收件人的姓名
-     * @return
+     * @param code     验证码
+     * @param name     收件人的姓名
+     * @return 是否成功
      */
     public boolean sendQQEmail(String receives, String code, String name) {
         String from_email = ConstantPropertiesUtils.EMAIL;
@@ -281,7 +384,7 @@ public class OssServiceImpl implements OssService {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss");
             // 模板
             String str = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body><p style='font-size: 20px;font-weight:bold;'>尊敬的：" + name + "，您好！</p>"
-                    + "<p style='text-indent:2em; font-size: 20px;'>欢迎注册伙伴匹配系统，您本次的注册码是 "
+                    + "<p style='text-indent:2em; font-size: 20px;'>欢迎注册伙伴匹配系统，您本次的验证码是 "
                     + "<span style='font-size:30px;font-weight:bold;color:red'>" + code + "</span>，1分钟之内有效，请尽快使用！</p>"
                     + "<p style='text-align:right; padding-right: 20px;'"
                     + "<a href='http://www.hyycinfo.com' style='font-size: 18px'></a></p>"
@@ -314,6 +417,24 @@ public class OssServiceImpl implements OssService {
         }
 
         return true;
+    }
+
+    private void ipEmailUtil(HttpServletRequest request) {
+        String ipAddress = IpUtils.getIpAddress(request);
+
+        String num = stringRedisTemplate.opsForValue().get(ipAddress);
+        if (StringUtils.hasText(num)) {
+            int max = Integer.parseInt(num);
+            // 一天的次数过多
+            if (max >= 20) {
+                IpUtilSealUp.addIpList(ipAddress);
+                throw new GlobalException(ErrorCode.PARAMS_ERROR);
+            }
+            stringRedisTemplate.opsForValue().increment(ipAddress);
+        } else {
+            stringRedisTemplate.opsForValue().set(ipAddress, "1", TimeUtils.getRemainSecondsOneDay(new Date()),
+                    TimeUnit.SECONDS);
+        }
     }
 
 }

@@ -15,9 +15,13 @@ public interface RedisKey {
     String redisIndexKey = "user:recommend";
     String redisAddTeamLock = "user:addTeam:key";
     String redisFileAvatarLock = "user:file:avatar:key";
-    String redisFileByTeamAvatarLock = "user:file:avatar:team:key";
-    String redisFileByRegisterLock = "user:file:register:user:key";
+    String redisFileByTeamAvatarLock = "user:file:avatar:team:lock";
+    String redisFileByRegisterLock = "user:file:register:user:lock";
+    String redisFileByBingDingLock = "user:file:BingDing:user:lock";
+    String redisFileByBingDingKey = "user:file:BingDing:user:key";
+    String redisFileByForgetLock = "user:file:forget:user:key";
     String redisRegisterCode = "redisRegisterCode:";
+    String redisForgetCode = "redisRegisterCode:";
 
 
 
