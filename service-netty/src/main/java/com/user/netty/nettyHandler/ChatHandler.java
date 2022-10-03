@@ -41,14 +41,12 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
         String message = msg.text();
         Gson gson = new Gson();
         Message mess = gson.fromJson(message, Message.class);
-//        log.info(mess+"mess====================");
         RabbitService recordService = SpringUtilObject.getBean(RabbitService.class);
         switch (mess.getType()) {
             case ChatType.CONNECT:
                 // 建立用户与通道的关联
                 String userId = mess.getChatRecord().getUserId();
                 UserChannelMap.put(userId, ctx.channel());
-//                log.info("建立用户 :" + userId + "与通道的关联: " + ctx.channel().id().asLongText());
                 UserChannelMap.print();
                 break;
             // 处理客服端发送消息
@@ -73,7 +71,6 @@ public class ChatHandler extends SimpleChannelInboundHandler<TextWebSocketFrame>
                     // 调用 Rabbit 保存信息
                     recordService.sendMessage(MqClient.DIRECT_EXCHANGE,MqClient.NETTY_KEY,record);
                     // 不在线,暂时不发送
-                    log.info("用户 "+chatRecord.getSendId() +"不在线!!!!");
                 }
                 break;
             case ChatType.TEAM:

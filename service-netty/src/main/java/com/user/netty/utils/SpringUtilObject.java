@@ -1,5 +1,6 @@
 package com.user.netty.utils;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -14,7 +15,7 @@ public class SpringUtilObject implements ApplicationContextAware {
 	private static ApplicationContext applicationContext;
 
 	@Override
-	public void setApplicationContext( ApplicationContext applicationContext) throws BeansException {
+	public void setApplicationContext(@NotNull ApplicationContext applicationContext) throws BeansException {
 		if (SpringUtilObject.applicationContext == null) {
 			SpringUtilObject.applicationContext = applicationContext;
 		}

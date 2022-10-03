@@ -3,9 +3,9 @@ package com.user.util.utils;
 import com.user.model.domain.User;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
+import org.springframework.util.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
-
 import java.util.Objects;
 
 import static com.user.model.constant.UserConstant.ADMIN_ROLE;
@@ -17,11 +17,20 @@ import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
  */
 
 public class UserUtils {
+    /**
+     * 通过解析获取用户信息
+     * @param request 请求
+     * @return 用户信息
+     */
     public static User getLoginUser(HttpServletRequest request) {
         if (request == null) {
             throw new GlobalException(ErrorCode.NO_LOGIN);
         }
-        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+        String token = (String) request.getSession().getAttribute(USER_LOGIN_STATE);
+        if (!StringUtils.hasText(token)) {
+            throw new GlobalException(ErrorCode.NO_LOGIN);
+        }
+        User user = JwtUtils.getMemberIdByJwtToken(request);
         if (user == null) {
             throw new GlobalException(ErrorCode.NO_LOGIN);
         }
@@ -49,8 +58,7 @@ public class UserUtils {
     }
     public static boolean isAdmin(HttpServletRequest request) {
         // 仅管理员查询
-        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
-
-        return user != null && Objects.equals(user.getRole(), ADMIN_ROLE);
+        User user = getLoginUser(request);
+        return Objects.equals(user.getRole(), ADMIN_ROLE);
     }
 }

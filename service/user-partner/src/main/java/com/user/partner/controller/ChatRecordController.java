@@ -9,6 +9,7 @@ import com.user.util.common.B;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -29,8 +30,8 @@ public class ChatRecordController {
 
     // 查询所有的聊天记录
     @GetMapping("/getList")
-    public B<List<ChatRecord>> getAllRecordList(@RequestParam(required = false) String userId, String friendId) {
-        List<ChatRecord> list =  recordService.selectAllList(userId, friendId);
+    public B<List<ChatRecord>> getAllRecordList(@RequestParam(required = false) String userId, String friendId, HttpServletRequest request) {
+        List<ChatRecord> list =  recordService.selectAllList(userId, friendId, request);
         return B.ok(list);
     }
 }

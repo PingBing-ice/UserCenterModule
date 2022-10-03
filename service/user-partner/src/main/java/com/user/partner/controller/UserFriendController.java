@@ -92,11 +92,7 @@ public class UserFriendController {
     @GetMapping("/acceptFriendReq")
     public B<String> acceptFriendReq(@RequestParam(required = false) String reqId, HttpServletRequest request) {
 
-        User user = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
-        if (user == null) {
-            throw new GlobalException(ErrorCode.NO_LOGIN, "请先登录");
-        }
-
+        User user = UserUtils.getLoginUser(request);
         int reject = friendReqService.Reject(reqId);
         if (reject <= 0) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "添加好友失败");
@@ -115,10 +111,7 @@ public class UserFriendController {
     @GetMapping("/selectFriendList")
     public B<List<User>> selectFriendList(HttpServletRequest request) {
 
-        User user = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
-        if (user == null) {
-            throw new GlobalException(ErrorCode.NO_LOGIN, "请先登录");
-        }
+        User user = UserUtils.getLoginUser(request);
         String userId = user.getId();
         String redisKey = RedisKey.selectFriend + userId;
         List<User> userRedisList = (List<User>) redisTemplate.opsForValue().get(redisKey);

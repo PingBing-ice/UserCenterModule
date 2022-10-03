@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import com.user.model.constant.RedisKey;
 import com.user.model.constant.UserStatus;
 import com.user.model.domain.User;
+import com.user.model.request.UpdateUserRequest;
 import com.user.model.request.UserLoginRequest;
 import com.user.model.request.UserRegisterRequest;
 import com.user.model.request.UserSearchTagAndTxtRequest;
@@ -14,10 +15,11 @@ import com.user.util.common.B;
 import com.user.util.common.ErrorCode;
 import com.user.util.exception.GlobalException;
 import com.user.util.utils.TimeUtils;
+import com.user.util.utils.UserUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -26,8 +28,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import static com.user.model.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * 缓存一致性 可以使用 Canal Java => https://blog.csdn.net/a56546/article/details/125170510
@@ -73,13 +73,13 @@ public class UserController {
      */
     @GetMapping("/current")
     public B<User> getCurrent(HttpServletRequest request) {
-        User currentUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+        User currentUser = UserUtils.getLoginUser(request);
         if (currentUser == null) {
             throw new GlobalException(ErrorCode.NO_LOGIN);
         }
         String id = currentUser.getId();
         User user = userService.getById(id);
-        if (user.getUserStatus() == UserStatus.LOCKING) {
+        if (user.getUserStatus().equals(UserStatus.LOCKING)) {
             throw new GlobalException(ErrorCode.NO_AUTH, "该用户以锁定...");
         }
         // 进行脱敏
@@ -170,18 +170,18 @@ public class UserController {
      * 修改用户
      */
     @PostMapping("/update")
-    public B<Long> updateUserByID(@RequestBody User updateUser, HttpServletRequest request) {
+    public B<Long> updateUserByID(@RequestBody UpdateUserRequest updateUser, HttpServletRequest request) {
         if (request == null) {
             throw new GlobalException(ErrorCode.NO_LOGIN);
         }
         if (updateUser == null) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
-        User loginUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
-        if (loginUser == null) {
-            throw new GlobalException(ErrorCode.NO_LOGIN);
-        }
-        long id = userService.getUserByUpdateID(loginUser, updateUser);
+        User loginUser = UserUtils.getLoginUser(request);
+
+        User user = new User();
+        BeanUtils.copyProperties(updateUser, user);
+        long id = userService.getUserByUpdateID(loginUser, user);
         return B.ok(id);
     }
 
@@ -190,7 +190,7 @@ public class UserController {
      */
     @GetMapping("/recommend")
     public B<Map<String, Object>> recommendUser(@RequestParam(required = false) long current, long size, HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = UserUtils.getLoginUser(request);
         Map<String, Object> userMap = (Map<String, Object>) redisTemplate.opsForValue().get(RedisKey.redisIndexKey);
         if (userMap != null) {
             return B.ok(userMap);
@@ -209,10 +209,7 @@ public class UserController {
     @GetMapping("/searchUserName")
     public B<List<User>> searchUserName(@RequestParam(required = false) String friendUserName,
                                         HttpServletRequest request) {
-        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
-        if (user == null) {
-            throw new GlobalException(ErrorCode.NO_LOGIN);
-        }
+        User user = UserUtils.getLoginUser(request);
         String userId = user.getId();
         List<User> friendList = userService.friendUserName(userId, friendUserName);
         if (friendList.size() == 0) {

@@ -4,6 +4,7 @@ package com.user.partner.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.user.model.domain.ChatRecord;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -20,7 +21,8 @@ public interface IChatRecordService extends IService<ChatRecord> {
      *  查询所有的聊天记录
      * @param userId 用户id
      * @param friendId 朋友id
+     * @param request
      * @return 集合
      */
-    List<ChatRecord> selectAllList(String userId, String friendId);
+    List<ChatRecord> selectAllList(String userId, String friendId, HttpServletRequest request);
 }

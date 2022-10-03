@@ -83,6 +83,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (userAccount.length() < 3) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "用户名过短");
         }
+
         if (password.length() < 6 || checkPassword.length() < 6) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "密码过短");
         }
@@ -188,8 +189,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         User cleanUser = getSafetyUser(user);
         // 记录用户的登录态
         HttpSession session = request.getSession();
-        session.setAttribute(USER_LOGIN_STATE, cleanUser);
-
+        String token = JwtUtils.getJwtToken(cleanUser);
+        session.setAttribute(USER_LOGIN_STATE, token);
         return cleanUser;
     }
 
@@ -273,8 +274,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         List<String> tagNameList = userSearchTagAndTxtRequest.getTagNameList();
         String searchTxt = userSearchTagAndTxtRequest.getSearchTxt();
-        if (!StringUtils.hasText(searchTxt)&& CollectionUtils.isEmpty(tagNameList)) {
-            throw new GlobalException(ErrorCode.NULL_ERROR,"请求数据为空");
+        if (!StringUtils.hasText(searchTxt) && CollectionUtils.isEmpty(tagNameList)) {
+            throw new GlobalException(ErrorCode.NULL_ERROR, "请求数据为空");
         }
         // sql 语句查询
 //        QueryWrapper<User> wrapper = new QueryWrapper<>();
@@ -318,8 +319,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Map<String, Object> selectPageIndexList(long current, long size) {
+        if (size > 300) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "请求参数有误");
+        }
         QueryWrapper<User> wrapper = new QueryWrapper<>();
-        wrapper.select("avatar_url", "user_account", "id", "tags","profile");
+        wrapper.select("avatar_url", "user_account", "id", "tags", "profile");
         Page<User> commentPage = baseMapper.selectPage(new Page<>(current, size), wrapper);
         Map<String, Object> map = new HashMap<>();
         List<User> userList = commentPage.getRecords();
@@ -343,14 +347,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String gender = updateUser.getGender();
         String tel = updateUser.getTel();
         String email = updateUser.getEmail();
-        Integer isDelete = updateUser.getIsDelete();
         String profile = updateUser.getProfile();
         String tags = updateUser.getTags();
-
-        if (isDelete != null) {
-            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "SB");
+        if (StringUtils.hasText(username)) {
+            String regEx = "\\pP|\\pS|\\s+";
+            username = Pattern.compile(regEx).matcher(username).replaceAll("").trim();
         }
-
         if (!StringUtils.hasText(userId) || Long.parseLong(userId) <= 0) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
@@ -360,7 +362,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 && !StringUtils.hasText(gender) && !StringUtils.hasText(profile)) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
-        if (StringUtils.hasText(gender) && !gender.equals("男") && !gender.equals("女")) {
+        if (StringUtils.hasText(profile)) {
+            if (profile.length() >= 200) {
+                throw new GlobalException(ErrorCode.PARAMS_ERROR, "描述过长");
+            }
+        }
+        if (StringUtils.hasText(gender) && !"男".equals(gender) && !"女".equals(gender)) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
         if (!isAdmin(loginUser) && !userId.equals(loginUser.getId())) {
@@ -370,9 +377,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (oldUser == null) {
             throw new GlobalException(ErrorCode.NULL_ERROR);
         }
+        if (StringUtils.hasText(tel)) {
+            String pattern = "0?(13|14|15|18|17)[0-9]{9}";
+            boolean matches = Pattern.compile(pattern).matcher(tel).matches();
+            if (!matches) {
+                throw new GlobalException(ErrorCode.PARAMS_ERROR,"手机号格式错误");
+            }
+        }
 
         if (StringUtils.hasText(tags)) {
-            if (oldUser.getTags().equals(tags)) {
+            String oldUserTags = oldUser.getTags();
+            if (StringUtils.hasText(oldUserTags) && oldUserTags.equals(tags)) {
                 throw new GlobalException(ErrorCode.NULL_ERROR, "重复提交...");
             }
             return this.TagsUtil(userId, updateUser);
@@ -380,7 +395,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         int update = baseMapper.updateById(updateUser);
         if (update > 0) {
             rabbitService.sendMessage(MqClient.DIRECT_EXCHANGE, MqClient.REMOVE_REDIS_KEY, RedisKey.redisIndexKey);
-        }else {
+        } else {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "修改失败");
         }
         return update;
@@ -388,6 +403,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     public boolean isAdmin(User user) {
+
         return user != null && Objects.equals(user.getRole(), ADMIN_ROLE);
     }
 
@@ -408,17 +424,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     }
 
-    @Override
-    public User getLoginUser(HttpServletRequest request) {
-        if (request == null) {
-            return null;
-        }
-        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
-        if (user == null) {
-            throw new GlobalException(ErrorCode.NO_LOGIN);
-        }
-        return user;
-    }
 
     public int TagsUtil(String userId, User updateUser) {
         String tagKey = RedisKey.tagRedisKey + userId;
@@ -434,7 +439,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         int parseInt;
         try {
-            parseInt= Integer.parseInt(tagNum);
+            parseInt = Integer.parseInt(tagNum);
         } catch (Exception e) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR);
         }
@@ -451,6 +456,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Map<String, Object> searchUser(HttpServletRequest request, String username, Long current, Long size) {
+
+
         boolean admin = this.isAdmin(request);
         if (!admin) {
             throw new GlobalException(ErrorCode.PARAMS_ERROR, "你不是管理员");
@@ -461,8 +468,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             wrapper.like("username", username);
         }
         if (current == null || size == null) {
+
             current = 1L;
             size = 30L;
+        }
+        if (size > 30L) {
+            throw new GlobalException(ErrorCode.SYSTEM_EXCEPTION, "请求数据有误");
         }
         Page<User> page = new Page<>(current, size);
         Page<User> userPage = baseMapper.selectPage(page, wrapper);

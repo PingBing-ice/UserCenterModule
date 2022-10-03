@@ -31,6 +31,9 @@ public class UserTeamOpenFeign {
         wrapper.eq("team_id", teamId);
         List<UserTeam> list = userTeamService.list(wrapper);
         List<String> teamIdList = new ArrayList<>();
+        if (list.size() <= 0) {
+            return teamIdList;
+        }
         list.forEach(userTeam -> {
             String teamUserId = userTeam.getUserId();
             if (!userId.equals(teamUserId)) {

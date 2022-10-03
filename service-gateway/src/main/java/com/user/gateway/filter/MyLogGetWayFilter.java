@@ -45,6 +45,7 @@ public class MyLogGetWayFilter implements GlobalFilter, Ordered {
         log.info("请求request信息：URI = {}, path = {}，method = {} , ip = {} ", URIPath, path, method,ipAddress);
         boolean select = IpUtilSealUp.selectByIp(ipAddress);
         if (select) {
+            log.error("拦截url == {} ,IP地址 == {}",URIPath,ipAddress);
             return exchange.getResponse().setComplete();
         }
         return chain.filter(exchange);

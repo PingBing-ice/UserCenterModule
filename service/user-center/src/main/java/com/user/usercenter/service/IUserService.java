@@ -19,12 +19,7 @@ import java.util.Map;
  */
 public interface IUserService extends IService<User> {
 
-    /**
-     * 获取登录用户信息
-     * @param request request
-     * @return 用户
-     */
-    User getLoginUser(HttpServletRequest request);
+
 
     /**
      * 用户注册

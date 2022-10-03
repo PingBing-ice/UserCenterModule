@@ -5,12 +5,17 @@ import com.user.model.domain.ChatRecord;
 import com.user.model.domain.TeamChatRecord;
 import com.user.partner.service.IChatRecordService;
 import com.user.partner.service.ITeamChatRecordService;
+import com.user.rabbitmq.config.mq.AckMode;
 import com.user.rabbitmq.config.mq.MqClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
+
+import java.io.IOException;
 
 /**
  * @author ice
@@ -24,7 +29,7 @@ public class NettyListener {
     @Autowired
     private ITeamChatRecordService teamChatRecordService;
 
-    @RabbitListener(queues = MqClient.NETTY_QUEUE)
+    @RabbitListener(queues = MqClient.NETTY_QUEUE,ackMode = AckMode.MANUAL)
     public void SaveChatRecord(Message message, Channel channel, ChatRecord chatRecord) {
         try {
             if (chatRecord != null) {
@@ -36,8 +41,14 @@ public class NettyListener {
                 log.error("保存聊天记录失败");
 
             }
+            channel.basicAck(message.getMessageProperties().getDeliveryTag(),false);
         } catch (Exception e) {
             log.error("保存聊天记录失败" + e.getMessage());
+            try {
+                channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+            } catch (IOException ex) {
+                log.error("消息队列拒绝失败" + e.getMessage());
+            }
         }
     }
 

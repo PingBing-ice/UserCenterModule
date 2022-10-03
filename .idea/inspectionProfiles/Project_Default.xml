@@ -41,5 +41,6 @@
       <option name="IGNORE_POINT_TO_ITSELF" value="false" />
       <option name="myAdditionalJavadocTags" value="ClassName:,Description:,Version,PackageName:com.user.util.utils,Author,Date,description,createDate,PackageName:com.user.oss.util,date,PackageName:com.user.usercenter.listener" />
     </inspection_tool>
+    <inspection_tool class="SerializableHasSerialVersionUIDField" enabled="true" level="WARNING" enabled_by_default="true" />
   </profile>
 </component>
